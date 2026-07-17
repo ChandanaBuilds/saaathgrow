@@ -25,7 +25,7 @@ Base.metadata.create_all(bind=engine)
 
 # Create FastAPI app
 app = FastAPI(
-    title="Saath Grow Delivery API",
+    title="Saath Groww Delivery API",
     version="1.0.0"
 )
 
@@ -41,5 +41,5 @@ app.include_router(wallet_router)
 @app.get("/")
 def health():
     return {
-        "message": "Saath Grow Backend Running"
+        "message": "Saath Groww Backend Running"
     }
