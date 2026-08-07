@@ -24,6 +24,14 @@ def pending_drivers(
     )
 
     return users
+@router.get("/all-users")
+def all_users(
+    db: Session = Depends(get_db)
+):
+    users = db.query(User).all()
+
+    return users
+
 @router.post("/approve-driver/{user_id}")
 def approve_driver(
     user_id: int,
