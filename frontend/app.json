@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "saath-Groww-delivery-v2",
+    "slug": "saath-grow",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "y",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.saathGrowwdeliveryv2"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "989c19a4-9e84-41db-be21-1c6b865fb2ef"
+      }
+    },
+    "plugins": [
+      "expo-status-bar"
+    ],
+    "owner": "tantanapally"
+  }
+}
