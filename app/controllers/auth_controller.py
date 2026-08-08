@@ -34,7 +34,7 @@ def send_otp(
 ):
     otp = "123456"
 
-    existing = (
+    existing_otp = (
         db.query(OTP)
         .filter(
             OTP.phone_number == request.phone_number
@@ -42,8 +42,8 @@ def send_otp(
         .first()
     )
 
-    if existing:
-        existing.otp = otp
+    if existing_otp:
+        existing_otp.otp = otp
     else:
         otp_row = OTP(
             phone_number=request.phone_number,
@@ -54,9 +54,20 @@ def send_otp(
 
     db.commit()
 
+    # Check whether user already exists
+    existing_user = (
+        db.query(User)
+        .filter(
+            User.phone_number == request.phone_number
+        )
+        .first()
+    )
+
     return {
+        "success": True,
         "message": "OTP sent successfully",
-        "otp": otp
+        "otp": otp,
+        "is_new_user": existing_user is None
     }
 
 
@@ -89,20 +100,30 @@ def verify_otp(
     )
 
     if user:
-       return {
-    "success": True,
-    "is_new_user": False,
-    "status": user.status,
-    "user": {
-        "id": user.id,
-        "phone_number": user.phone_number
-    }
-}
+        return {
+            "success": True,
+            "is_new_user": False,
+            "status": user.status,
+            "user": {
+                "id": user.id,
+                "phone_number": user.phone_number,
+                "full_name": user.full_name,
+                "email": user.email,
+                "city": user.city,
+                "state": user.state,
+                "pincode": user.pincode,
+                "vehicle_type": user.vehicle_type,
+                "vehicle_number": user.vehicle_number,
+                "is_approved": user.is_approved
+            }
+        }
 
     return {
         "success": True,
         "is_new_user": True
     }
+    
+    
 @router.post("/register")
 def register_user(
     request: RegisterRequest,
