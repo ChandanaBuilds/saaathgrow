@@ -1,1 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads
+backend/uploads/
+
+# IDE
 .idea/
+
+# Node
+node_modules/
+frontend/.expo/
+frontend/dist/
+frontend/.expo-shared/
+
+# Environment
+.env
+.env.*
+!.env.example
