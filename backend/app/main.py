@@ -1,25 +1,121 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from sqlalchemy import inspect, text
+
 from app.database import Base, engine
+
+# =========================================================
+# IMPORT ALL MODELS
+# =========================================================
 
 from app.models.user import User
 from app.models.otp import OTP
+from app.models.email_otp import EmailOTP
 from app.models.document import Document
 from app.models.order import Order
-
-from app.controllers.auth_controller import router as auth_router
-from app.controllers.admin_controller import router as admin_router
-from app.controllers.order_controller import router as order_router
-from app.controllers.wallet_controller import router as wallet_router
-from app.models.email_otp import EmailOTP
+from app.models.wallet import Wallet
 
 
-# Create tables
+# =========================================================
+# DATABASE SETUP
+# =========================================================
+
 Base.metadata.create_all(bind=engine)
 
 
-# Create FastAPI app
+# =========================================================
+# SQLITE MIGRATION
+# =========================================================
+#
+# Existing SQLite databases are NOT automatically updated
+# when a new column is added to a SQLAlchemy model.
+#
+# We therefore check for email_verified and add it if
+# the existing users table does not have it.
+# =========================================================
+
+def migrate_database():
+
+    inspector = inspect(engine)
+
+    tables = inspector.get_table_names()
+
+    # -----------------------------------------------------
+    # Make sure users table exists
+    # -----------------------------------------------------
+
+    if "users" in tables:
+
+        columns = [
+            column["name"]
+            for column in inspector.get_columns("users")
+        ]
+
+        # -------------------------------------------------
+        # Add email_verified to existing users table
+        # -------------------------------------------------
+
+        if "email_verified" not in columns:
+
+            print(
+                "Adding email_verified column to users table..."
+            )
+
+            with engine.begin() as connection:
+
+                connection.execute(
+                    text(
+                        """
+                        ALTER TABLE users
+                        ADD COLUMN email_verified BOOLEAN
+                        DEFAULT 0
+                        """
+                    )
+                )
+
+            print(
+                "email_verified column added successfully."
+            )
+
+        else:
+
+            print(
+                "email_verified column already exists."
+            )
+
+    # -----------------------------------------------------
+    # Make sure EmailOTP table exists
+    # -----------------------------------------------------
+
+    inspector = inspect(engine)
+
+    tables = inspector.get_table_names()
+
+    if "email_otps" not in tables:
+
+        print(
+            "Creating email_otps table..."
+        )
+
+        EmailOTP.__table__.create(
+            bind=engine,
+            checkfirst=True
+        )
+
+        print(
+            "email_otps table created successfully."
+        )
+
+
+# Run migration
+migrate_database()
+
+
+# =========================================================
+# CREATE FASTAPI APP
+# =========================================================
+
 app = FastAPI(
     title="Saath Groww Delivery API",
     version="1.0.0"
@@ -27,31 +123,61 @@ app = FastAPI(
 
 
 # =========================================================
-# CORS CONFIGURATION
+# CORS
 # =========================================================
 
 origins = [
+
     "http://localhost:8081",
+
     "http://localhost:8082",
+
     "http://localhost:3000",
+
     "http://127.0.0.1:8081",
+
     "http://127.0.0.1:8082",
+
     "http://127.0.0.1:3000",
+
 ]
 
 
 app.add_middleware(
+
     CORSMiddleware,
+
     allow_origins=origins,
+
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
+
 )
 
 
 # =========================================================
-# REGISTER ROUTERS
+# ROUTERS
 # =========================================================
+
+from app.controllers.auth_controller import (
+    router as auth_router
+)
+
+from app.controllers.admin_controller import (
+    router as admin_router
+)
+
+from app.controllers.order_controller import (
+    router as order_router
+)
+
+from app.controllers.wallet_controller import (
+    router as wallet_router
+)
+
 
 app.include_router(auth_router)
 
@@ -68,6 +194,9 @@ app.include_router(wallet_router)
 
 @app.get("/")
 def health():
+
     return {
-        "message": "Saath Groww Backend Running"
+        "success": True,
+        "message": "Saath Groww Backend Running",
+        "version": "2.0.0"
     }

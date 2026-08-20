@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
+
 from typing import Optional
 
 
@@ -8,7 +9,7 @@ class RegisterRequest(BaseModel):
 
     full_name: str
 
-    email: EmailStr
+    email: str
 
     city: str
 
