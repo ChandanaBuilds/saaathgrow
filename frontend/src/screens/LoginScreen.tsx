@@ -19,6 +19,11 @@ export default function LoginScreen() {
     const navigation = useNavigation<any>();
 
     const handleSendOTP = async () => {
+        console.log("=================================");
+        console.log("SEND OTP BUTTON CLICKED");
+        console.log("Mobile:", mobile);
+        console.log("=================================");
+
         if (mobile.length !== 10) {
             Alert.alert(
                 "Invalid Number",
@@ -28,24 +33,53 @@ export default function LoginScreen() {
         }
 
         try {
+            console.log("Calling backend...");
+
             const response = await axios.post(
                 "https://saaathgrow.onrender.com/auth/send-otp",
                 {
                     phone_number: mobile,
+                },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    timeout: 30000,
                 }
             );
 
-            console.log(response.data);
+            console.log("STATUS:", response.status);
+            console.log("DATA:", response.data);
 
-            navigation.navigate("Otp", {
-                mobile,
-            });
-
-        } catch (error) {
-            console.log(error);
+            if (response.data.success === false) {
+                Alert.alert(
+                    "OTP Failed",
+                    response.data.message || "Unable to send OTP"
+                );
+                return;
+            }
 
             Alert.alert(
-                "Error",
+                "Success",
+                "OTP sent successfully"
+            );
+
+            navigation.navigate("Otp", {
+                mobile: mobile,
+            });
+
+        } catch (error: any) {
+            console.log("========== OTP ERROR ==========");
+            console.log("MESSAGE:", error.message);
+            console.log("CODE:", error.code);
+            console.log("STATUS:", error.response?.status);
+            console.log("DATA:", error.response?.data);
+            console.log("===============================");
+
+            Alert.alert(
+                "OTP Error",
+                error.response?.data?.message ||
+                error.message ||
                 "Failed to send OTP"
             );
         }
