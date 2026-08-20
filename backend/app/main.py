@@ -12,6 +12,7 @@ from app.controllers.auth_controller import router as auth_router
 from app.controllers.admin_controller import router as admin_router
 from app.controllers.order_controller import router as order_router
 from app.controllers.wallet_controller import router as wallet_router
+from app.models.email_otp import EmailOTP
 
 
 # Create tables
