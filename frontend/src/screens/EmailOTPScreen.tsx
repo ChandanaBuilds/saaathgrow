@@ -1,8 +1,4 @@
-
-import React, {
-    useEffect,
-    useState,
-} from "react";
+import React, { useEffect, useState } from "react";
 
 import {
     View,
@@ -10,78 +6,111 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
+    StatusBar,
     Alert,
     ActivityIndicator,
 } from "react-native";
 
 import axios from "axios";
 
+import { useNavigation, useRoute } from "@react-navigation/native";
+
 
 const API_URL =
     "https://saaathgrow.onrender.com";
 
 
-export default function EmailOTPScreen({
-    route,
-    navigation,
-}: any) {
+export default function EmailOTPScreen() {
 
-    const {
-        email,
-        purpose,
-    } = route.params;
+    const navigation = useNavigation<any>();
 
-
-    const [otp, setOtp] = useState("");
-
-    const [timer, setTimer] = useState(60);
-
-    const [loading, setLoading] = useState(false);
+    const route = useRoute<any>();
 
 
     // =====================================================
-    // TIMER
+    // DATA FROM REGISTER SCREEN
+    // =====================================================
+
+    const email =
+        route.params?.email || "";
+
+    const purpose =
+        route.params?.purpose || "registration";
+
+
+    // =====================================================
+    // STATE
+    // =====================================================
+
+    const [otp, setOtp] =
+        useState("");
+
+    const [loading, setLoading] =
+        useState(false);
+
+    const [resendLoading, setResendLoading] =
+        useState(false);
+
+    const [countdown, setCountdown] =
+        useState(30);
+
+
+    // =====================================================
+    // COUNTDOWN
     // =====================================================
 
     useEffect(() => {
 
-        if (timer <= 0) {
+        if (countdown <= 0) {
             return;
         }
 
-
-        const interval =
+        const timer =
             setInterval(() => {
 
-                setTimer(
-                    previous =>
-                        previous - 1
+                setCountdown(
+                    previous => previous - 1
                 );
 
             }, 1000);
 
 
         return () =>
-            clearInterval(interval);
+            clearInterval(timer);
 
-    }, [timer]);
+    }, [countdown]);
 
 
     // =====================================================
     // VERIFY OTP
     // =====================================================
 
-    const handleVerify = async () => {
+    const handleVerifyOTP = async () => {
 
-        const cleanOtp =
+        const cleanOTP =
             otp.trim();
 
 
-        if (cleanOtp.length !== 6) {
+        // -------------------------------------------------
+        // OTP VALIDATION
+        // -------------------------------------------------
+
+        if (!cleanOTP) {
+
+            Alert.alert(
+                "OTP Required",
+                "Please enter the OTP sent to your email."
+            );
+
+            return;
+        }
+
+
+        if (!/^\d{6}$/.test(cleanOTP)) {
 
             Alert.alert(
                 "Invalid OTP",
-                "Please enter the 6 digit OTP sent to your email."
+                "Please enter the 6-digit OTP."
             );
 
             return;
@@ -93,61 +122,40 @@ export default function EmailOTPScreen({
             setLoading(true);
 
 
-            let response;
+            console.log(
+                "VERIFY OTP REQUEST:",
+                {
+                    email,
+                    otp: cleanOTP,
+                }
+            );
 
 
             // =================================================
             // REGISTRATION OTP
             // =================================================
 
-            if (
-                purpose ===
-                "registration"
-            ) {
+            const response =
+                await axios.post(
 
-                response =
-                    await axios.post(
+                    `${API_URL}/auth/verify-registration-otp`,
 
-                        `${API_URL}/auth/verify-registration-otp`,
+                    null,
 
-                        null,
+                    {
+                        params: {
+                            email: email,
+                            otp: cleanOTP,
+                        },
 
-                        {
-                            params: {
-                                email,
-                                otp: cleanOtp,
-                            },
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
 
-                            timeout: 30000,
-                        }
-                    );
-
-            }
-
-
-            // =================================================
-            // LOGIN OTP
-            // =================================================
-
-            else {
-
-                response =
-                    await axios.post(
-
-                        `${API_URL}/auth/login/verify-otp`,
-
-                        null,
-
-                        {
-                            params: {
-                                email,
-                                otp: cleanOtp,
-                            },
-
-                            timeout: 30000,
-                        }
-                    );
-            }
+                        timeout: 30000,
+                    }
+                );
 
 
             const data =
@@ -169,7 +177,7 @@ export default function EmailOTPScreen({
                 Alert.alert(
                     "Verification Failed",
                     data.message ||
-                    "Invalid OTP."
+                    "Invalid OTP. Please try again."
                 );
 
                 return;
@@ -177,169 +185,80 @@ export default function EmailOTPScreen({
 
 
             // =================================================
-            // NEW USER
+            // SUCCESS
             // =================================================
 
-            if (
-                purpose ===
-                "registration"
-            ) {
+            /*
+             * IMPORTANT:
+             *
+             * Do NOT navigate immediately.
+             *
+             * First show the success message.
+             */
 
-                Alert.alert(
-                    "Email Verified",
-                    "Your email has been verified successfully.",
-                    [
-                        {
-                            text: "Continue",
+            Alert.alert(
 
-                            onPress: () => {
+                "Email Successfully Registered",
 
-                                navigation.replace(
-                                    "DocumentUpload",
-                                    {
-                                        userId:
-                                            data.user.id,
-                                    }
-                                );
+                "Your email has been successfully verified and registered.",
 
-                            },
+                [
+                    {
+                        text: "Continue",
+
+                        onPress: () => {
+
+                            console.log(
+                                "Moving to Create Profile"
+                            );
+
+
+                            // =================================================
+                            // MOVE TO CREATE PROFILE
+                            // =================================================
+
+                            navigation.replace(
+                                "CreateProfile",
+                                {
+                                    email: email,
+
+                                    user: data.user,
+                                }
+                            );
+
                         },
-                    ]
-                );
+                    },
+                ]
 
-                return;
-            }
-
-
-            // =================================================
-            // EXISTING USER LOGIN
-            // =================================================
-
-            const user =
-                data.user;
-
-
-            const status =
-                data.status;
-
-
-            // -------------------------------------------------
-            // APPROVED
-            // -------------------------------------------------
-
-            if (
-                status ===
-                "approved"
-            ) {
-
-                navigation.replace(
-                    "Main",
-                    {
-                        userId:
-                            user.id,
-                    }
-                );
-
-                return;
-            }
-
-
-            // -------------------------------------------------
-            // PENDING DOCUMENTS
-            // -------------------------------------------------
-
-            if (
-                status ===
-                "pending_documents"
-            ) {
-
-                navigation.replace(
-                    "DocumentUpload",
-                    {
-                        userId:
-                            user.id,
-                    }
-                );
-
-                return;
-            }
-
-
-            // -------------------------------------------------
-            // PENDING VERIFICATION
-            // -------------------------------------------------
-
-            if (
-                status ===
-                "pending_verification"
-            ) {
-
-                navigation.replace(
-                    "VerificationPending",
-                    {
-                        userId:
-                            user.id,
-                    }
-                );
-
-                return;
-            }
-
-
-            // -------------------------------------------------
-            // REJECTED
-            // -------------------------------------------------
-
-            if (
-                status ===
-                "rejected"
-            ) {
-
-                navigation.replace(
-                    "DocumentUpload",
-                    {
-                        userId:
-                            user.id,
-
-                        reupload: true,
-                    }
-                );
-
-                return;
-            }
-
-
-            // -------------------------------------------------
-            // FALLBACK
-            // -------------------------------------------------
-
-            navigation.replace(
-                "Main",
-                {
-                    userId:
-                        user.id,
-                }
             );
+
 
         } catch (error: any) {
 
             console.log(
-                "EMAIL OTP ERROR:",
+                "VERIFY OTP ERROR:",
                 error.response?.data ||
                 error.message
             );
 
 
+            const message =
+                error.response?.data?.message ||
+                "Unable to verify OTP. Please try again.";
+
+
             Alert.alert(
                 "Verification Error",
-                error.response?.data?.message ||
-                "Unable to verify OTP. Please try again."
+                message
             );
+
 
         } finally {
 
             setLoading(false);
+
         }
+
     };
 
 
@@ -347,75 +266,54 @@ export default function EmailOTPScreen({
     // RESEND OTP
     // =====================================================
 
-    const handleResend = async () => {
+    const handleResendOTP = async () => {
 
-        if (timer > 0) {
+        if (countdown > 0) {
             return;
         }
 
 
         try {
 
-            setLoading(true);
+            setResendLoading(true);
 
 
-            let response;
+            console.log(
+                "RESEND OTP REQUEST:",
+                email
+            );
 
 
-            // =================================================
-            // REGISTRATION RESEND
-            // =================================================
+            const response =
+                await axios.post(
 
-            if (
-                purpose ===
-                "registration"
-            ) {
+                    `${API_URL}/auth/register/resend-otp`,
 
-                response =
-                    await axios.post(
+                    null,
 
-                        `${API_URL} /auth/register / resend - otp`,
+                    {
+                        params: {
+                            email: email,
+                        },
 
-                        null,
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
 
-                        {
-                            params: {
-                                email,
-                            },
-
-                            timeout: 30000,
-                        }
-                    );
-
-            }
-
-
-            // =================================================
-            // LOGIN RESEND
-            // =================================================
-
-            else {
-
-                response =
-                    await axios.post(
-
-                        `${API_URL} /auth/login / send - otp`,
-
-                        null,
-
-                        {
-                            params: {
-                                email,
-                            },
-
-                            timeout: 30000,
-                        }
-                    );
-            }
+                        timeout: 30000,
+                    }
+                );
 
 
             const data =
                 response.data;
+
+
+            console.log(
+                "RESEND OTP RESPONSE:",
+                data
+            );
 
 
             if (!data.success) {
@@ -423,22 +321,25 @@ export default function EmailOTPScreen({
                 Alert.alert(
                     "Unable to Resend",
                     data.message ||
-                    "Please try again."
+                    "Unable to resend OTP."
                 );
 
                 return;
             }
 
 
-            setOtp("");
+            // Reset countdown
 
-            setTimer(60);
+            setCountdown(30);
+
+            setOtp("");
 
 
             Alert.alert(
                 "OTP Sent",
                 "A new OTP has been sent to your email."
             );
+
 
         } catch (error: any) {
 
@@ -449,22 +350,67 @@ export default function EmailOTPScreen({
             );
 
 
-            Alert.alert(
-                "Error",
+            const message =
                 error.response?.data?.message ||
-                "Unable to resend OTP."
+                "Unable to resend OTP. Please try again.";
+
+
+            Alert.alert(
+                "Resend Failed",
+                message
             );
+
 
         } finally {
 
-            setLoading(false);
+            setResendLoading(false);
+
         }
+
     };
 
+
+    // =====================================================
+    // CHANGE EMAIL
+    // =====================================================
+
+    const handleChangeEmail = () => {
+
+        navigation.goBack();
+
+    };
+
+
+    // =====================================================
+    // UI
+    // =====================================================
 
     return (
 
         <View style={styles.container}>
+
+            <StatusBar
+                backgroundColor="#FFFDFF"
+                barStyle="dark-content"
+            />
+
+
+            {/* =================================================
+                ICON
+            ================================================= */}
+
+            <View style={styles.iconContainer}>
+
+                <View style={styles.iconCircle}>
+
+                    <Text style={styles.icon}>
+                        ✉
+                    </Text>
+
+                </View>
+
+            </View>
+
 
             {/* =================================================
                 TITLE
@@ -476,9 +422,13 @@ export default function EmailOTPScreen({
 
 
             <Text style={styles.subtitle}>
-                We sent a 6 digit verification code to
+                We sent a 6 digit verification code
             </Text>
 
+
+            {/* =================================================
+                EMAIL
+            ================================================= */}
 
             <Text style={styles.email}>
                 {email}
@@ -490,23 +440,39 @@ export default function EmailOTPScreen({
             ================================================= */}
 
             <TextInput
+
+                style={styles.otpInput}
+
                 value={otp}
 
-                onChangeText={setOtp}
+                onChangeText={(value) => {
 
-                keyboardType="number-pad"
+                    const numbersOnly =
+                        value.replace(
+                            /[^0-9]/g,
+                            ""
+                        );
 
-                maxLength={6}
+                    setOtp(
+                        numbersOnly.slice(0, 6)
+                    );
+
+                }}
 
                 placeholder="Enter OTP"
 
                 placeholderTextColor="#999"
 
-                style={styles.input}
+                keyboardType="number-pad"
 
-                textContentType="oneTimeCode"
+                maxLength={6}
 
-                autoComplete="sms-otp"
+                textAlign="center"
+
+                autoFocus
+
+                editable={!loading}
+
             />
 
 
@@ -515,16 +481,18 @@ export default function EmailOTPScreen({
             ================================================= */}
 
             <TouchableOpacity
+
                 style={[
                     styles.button,
 
                     loading &&
-                    styles.buttonDisabled
+                    styles.buttonDisabled,
                 ]}
 
-                onPress={handleVerify}
+                onPress={handleVerifyOTP}
 
                 disabled={loading}
+
             >
 
                 {loading ? (
@@ -538,6 +506,7 @@ export default function EmailOTPScreen({
                     <Text style={styles.buttonText}>
                         Verify & Continue
                     </Text>
+
                 )}
 
             </TouchableOpacity>
@@ -547,25 +516,47 @@ export default function EmailOTPScreen({
                 RESEND
             ================================================= */}
 
-            {timer > 0 ? (
+            <TouchableOpacity
 
-                <Text style={styles.timer}>
-                    Resend OTP in {timer}s
-                </Text>
+                onPress={handleResendOTP}
 
-            ) : (
+                disabled={
+                    countdown > 0 ||
+                    resendLoading
+                }
 
-                <TouchableOpacity
-                    onPress={handleResend}
-                    disabled={loading}
-                >
+                style={styles.resendButton}
 
-                    <Text style={styles.resend}>
-                        Resend OTP
+            >
+
+                {resendLoading ? (
+
+                    <ActivityIndicator
+                        size="small"
+                        color="#1DAB52"
+                    />
+
+                ) : (
+
+                    <Text
+                        style={[
+                            styles.resendText,
+
+                            countdown > 0 &&
+                            styles.resendDisabled,
+                        ]}
+                    >
+
+                        {countdown > 0
+                            ? `Resend OTP in ${countdown}s`
+                            : "Resend OTP"
+                        }
+
                     </Text>
 
-                </TouchableOpacity>
-            )}
+                )}
+
+            </TouchableOpacity>
 
 
             {/* =================================================
@@ -573,11 +564,13 @@ export default function EmailOTPScreen({
             ================================================= */}
 
             <TouchableOpacity
-                style={styles.changeEmail}
-                onPress={() =>
-                    navigation.goBack()
-                }
+
+                onPress={handleChangeEmail}
+
                 disabled={loading}
+
+                style={styles.changeEmailButton}
+
             >
 
                 <Text style={styles.changeEmailText}>
@@ -587,89 +580,157 @@ export default function EmailOTPScreen({
             </TouchableOpacity>
 
         </View>
+
     );
+
 }
 
+
+// =========================================================
+// STYLES
+// =========================================================
 
 const styles = StyleSheet.create({
 
     container: {
+
         flex: 1,
 
         backgroundColor: "#FFFDFF",
 
+        justifyContent: "center",
+
         paddingHorizontal: 25,
 
-        justifyContent: "center",
     },
 
 
+    // -------------------------------------------------------
+    // ICON
+    // -------------------------------------------------------
+
+    iconContainer: {
+
+        alignItems: "center",
+
+        marginBottom: 20,
+
+    },
+
+
+    iconCircle: {
+
+        width: 75,
+
+        height: 75,
+
+        borderRadius: 40,
+
+        backgroundColor: "#E8F8EF",
+
+        borderWidth: 2,
+
+        borderColor: "#1DAB52",
+
+        justifyContent: "center",
+
+        alignItems: "center",
+
+    },
+
+
+    icon: {
+
+        fontSize: 34,
+
+    },
+
+
+    // -------------------------------------------------------
+    // TITLE
+    // -------------------------------------------------------
+
     title: {
-        fontSize: 30,
+
+        fontSize: 27,
 
         fontWeight: "800",
 
         color: "#1DAB52",
 
         textAlign: "center",
+
+        marginBottom: 10,
+
     },
 
 
     subtitle: {
+
+        fontSize: 14,
+
+        color: "#777",
+
         textAlign: "center",
 
-        color: "#666",
-
-        marginTop: 15,
-
-        fontSize: 15,
-
-        lineHeight: 22,
     },
 
 
     email: {
-        textAlign: "center",
 
-        color: "#EDB131",
+        fontSize: 14,
 
         fontWeight: "700",
 
-        fontSize: 17,
+        color: "#EDB131",
+
+        textAlign: "center",
 
         marginTop: 8,
 
-        marginBottom: 40,
+        marginBottom: 25,
+
     },
 
 
-    input: {
+    // -------------------------------------------------------
+    // OTP
+    // -------------------------------------------------------
+
+    otpInput: {
+
+        height: 58,
+
+        backgroundColor: "#FFFFFF",
+
         borderWidth: 1.5,
 
         borderColor: "#78C4D8",
 
         borderRadius: 14,
 
-        padding: 18,
+        paddingHorizontal: 16,
 
-        textAlign: "center",
-
-        fontSize: 24,
+        fontSize: 22,
 
         letterSpacing: 8,
 
-        marginBottom: 25,
-
-        backgroundColor: "#FFFFFF",
-
         color: "#222",
+
+        marginBottom: 18,
+
     },
 
 
+    // -------------------------------------------------------
+    // BUTTON
+    // -------------------------------------------------------
+
     button: {
-        backgroundColor: "#1DAB52",
 
         height: 58,
+
+        backgroundColor: "#1DAB52",
 
         borderRadius: 14,
 
@@ -678,60 +739,84 @@ const styles = StyleSheet.create({
         alignItems: "center",
 
         elevation: 3,
+
     },
 
 
     buttonDisabled: {
+
         opacity: 0.7,
+
     },
 
 
     buttonText: {
+
         color: "#FFFFFF",
 
-        fontWeight: "700",
-
-        fontSize: 16,
-    },
-
-
-    timer: {
-        textAlign: "center",
-
-        marginTop: 25,
-
-        color: "#666",
-
-        fontSize: 14,
-    },
-
-
-    resend: {
-        textAlign: "center",
-
-        marginTop: 25,
-
-        color: "#EDB131",
+        fontSize: 17,
 
         fontWeight: "700",
 
-        fontSize: 16,
     },
 
 
-    changeEmail: {
-        marginTop: 25,
+    // -------------------------------------------------------
+    // RESEND
+    // -------------------------------------------------------
+
+    resendButton: {
 
         alignItems: "center",
+
+        marginTop: 20,
+
+        minHeight: 25,
+
+    },
+
+
+    resendText: {
+
+        color: "#1DAB52",
+
+        fontSize: 14,
+
+        fontWeight: "700",
+
+    },
+
+
+    resendDisabled: {
+
+        color: "#999",
+
+        fontWeight: "400",
+
+    },
+
+
+    // -------------------------------------------------------
+    // CHANGE EMAIL
+    // -------------------------------------------------------
+
+    changeEmailButton: {
+
+        alignItems: "center",
+
+        marginTop: 15,
+
     },
 
 
     changeEmailText: {
+
         color: "#1DAB52",
 
         fontSize: 14,
 
         fontWeight: "600",
+
     },
 
 });

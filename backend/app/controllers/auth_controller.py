@@ -329,72 +329,165 @@ def register_user(
 # VERIFY REGISTRATION OTP
 # =========================================================
 
+# =========================================================
+# VERIFY REGISTRATION OTP
+# =========================================================
+
 @router.post("/verify-registration-otp")
 def verify_registration_otp(
-
     email: str,
-
     otp: str,
-
     db: Session = Depends(get_db)
 ):
     """
-    Verify the OTP sent during
-    new user registration.
+    Verify the latest OTP sent during registration.
     """
 
-    email = (
-        email
-        .lower()
-        .strip()
-    )
+    # -----------------------------------------------------
+    # CLEAN INPUT
+    # -----------------------------------------------------
 
-    otp = otp.strip()
+    email = str(email).lower().strip()
+    otp = str(otp).strip()
+
+    print("========================================")
+    print("REGISTRATION OTP VERIFICATION")
+    print("EMAIL RECEIVED:", repr(email))
+    print("OTP RECEIVED:", repr(otp))
+    print("========================================")
 
 
     # -----------------------------------------------------
-    # FIND OTP
+    # FIND USER
+    # -----------------------------------------------------
+
+    user = (
+        db.query(User)
+        .filter(
+            User.email == email
+        )
+        .first()
+    )
+
+
+    if not user:
+
+        print(
+            "USER NOT FOUND:",
+            repr(email)
+        )
+
+        return {
+            "success": False,
+            "message": (
+                "User account not found. "
+                "Please register again."
+            )
+        }
+
+
+    print(
+        "USER FOUND:",
+        user.id,
+        user.email
+    )
+
+
+    # -----------------------------------------------------
+    # FIND LATEST REGISTRATION OTP
     # -----------------------------------------------------
 
     otp_record = (
-
         db.query(EmailOTP)
-
         .filter(
-
             EmailOTP.email == email,
-
-            EmailOTP.otp == otp,
-
-            EmailOTP.purpose
-            == "registration"
-
+            EmailOTP.purpose == "registration"
         )
-
         .order_by(
             EmailOTP.id.desc()
         )
-
         .first()
     )
 
 
     # -----------------------------------------------------
-    # INVALID OTP
+    # NO OTP FOUND
     # -----------------------------------------------------
 
     if not otp_record:
 
+        print(
+            "NO REGISTRATION OTP FOUND FOR:",
+            repr(email)
+        )
+
         return {
-
             "success": False,
-
             "message": (
-                "Invalid OTP. "
-                "Please check your email "
-                "and try again."
+                "No active OTP was found. "
+                "Please request a new OTP."
             )
         }
+
+
+    # -----------------------------------------------------
+    # PRINT DATABASE OTP INFORMATION
+    # -----------------------------------------------------
+
+    stored_otp = str(
+        otp_record.otp
+    ).strip()
+
+
+    print(
+        "OTP RECORD ID:",
+        otp_record.id
+    )
+
+    print(
+        "OTP PURPOSE:",
+        repr(otp_record.purpose)
+    )
+
+    print(
+        "OTP CREATED AT:",
+        otp_record.created_at
+    )
+
+    print(
+        "OTP RECEIVED:",
+        repr(otp)
+    )
+
+    print(
+        "OTP STORED:",
+        repr(stored_otp)
+    )
+
+
+    # -----------------------------------------------------
+    # COMPARE OTP
+    # -----------------------------------------------------
+
+    if stored_otp != otp:
+
+        print(
+            "OTP MISMATCH"
+        )
+
+        return {
+            "success": False,
+            "message": (
+                "Invalid OTP. "
+                "Please use the latest OTP sent "
+                "to your email."
+            )
+        }
+
+
+    print(
+        "OTP MATCHED SUCCESSFULLY"
+    )
 
 
     # -----------------------------------------------------
@@ -405,56 +498,21 @@ def verify_registration_otp(
         otp_record
     ):
 
+        print(
+            "OTP EXPIRED"
+        )
+
         db.delete(
             otp_record
         )
 
         db.commit()
 
-
         return {
-
             "success": False,
-
             "message": (
                 "This OTP has expired. "
                 "Please request a new OTP."
-            )
-        }
-
-
-    # -----------------------------------------------------
-    # FIND USER
-    # -----------------------------------------------------
-
-    user = (
-
-        db.query(User)
-
-        .filter(
-            User.email == email
-        )
-
-        .first()
-    )
-
-
-    if not user:
-
-        db.delete(
-            otp_record
-        )
-
-        db.commit()
-
-
-        return {
-
-            "success": False,
-
-            "message": (
-                "User account not found. "
-                "Please register again."
             )
         }
 
@@ -480,11 +538,27 @@ def verify_registration_otp(
 
 
     # -----------------------------------------------------
+    # SUCCESS LOG
+    # -----------------------------------------------------
+
+    print(
+        "EMAIL VERIFIED SUCCESSFULLY:",
+        repr(email)
+    )
+
+    print(
+        "USER STATUS:",
+        user.status
+    )
+
+    print("========================================")
+
+
+    # -----------------------------------------------------
     # RESPONSE
     # -----------------------------------------------------
 
     return {
-
         "success": True,
 
         "message": (
@@ -492,7 +566,6 @@ def verify_registration_otp(
         ),
 
         "user": {
-
             "id": user.id,
 
             "phone_number":
@@ -505,12 +578,13 @@ def verify_registration_otp(
                 user.email,
 
             "status":
-                user.status
+                user.status,
+
+            "email_verified":
+                user.email_verified
         }
     }
-
-
-# =========================================================
+    # =========================================================
 # RESEND REGISTRATION OTP
 # =========================================================
 
