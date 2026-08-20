@@ -1,22 +1,18 @@
-from pydantic import BaseModel
-
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
 
-    phone_number: str
+    full_name: str = Field(
+        ...,
+        min_length=2,
+        max_length=100
+    )
 
-    full_name: str
+    email: EmailStr
 
-    email: str
-
-    city: str
-
-    state: str
-
-    pincode: str
-
-    vehicle_type: str
-
-    vehicle_number: str
+    phone_number: str = Field(
+        ...,
+        min_length=10,
+        max_length=10
+    )

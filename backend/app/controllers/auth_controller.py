@@ -1,4 +1,3 @@
-
 import secrets
 from datetime import datetime, timedelta
 
@@ -63,6 +62,8 @@ def remove_old_otps(
         synchronize_session=False
     )
 
+    db.commit()
+
 
 # =========================================================
 # HELPER - CHECK OTP EXPIRY
@@ -76,8 +77,11 @@ def is_otp_expired(
         return True
 
     return (
-        datetime.utcnow() - otp_record.created_at
-        > timedelta(minutes=OTP_EXPIRY_MINUTES)
+        datetime.utcnow()
+        - otp_record.created_at
+        > timedelta(
+            minutes=OTP_EXPIRY_MINUTES
+        )
     )
 
 
@@ -91,13 +95,36 @@ def register_user(
     db: Session = Depends(get_db)
 ):
     """
-    Create a new driver account and send
-    registration OTP to the provided email.
+    Stage 1 registration.
+
+    User provides only:
+
+    - Full name
+    - Gmail
+    - Phone number
+
+    After successful registration,
+    an OTP is sent to the provided email.
     """
 
-    email = request.email.lower().strip()
+    # -----------------------------------------------------
+    # CLEAN INPUT
+    # -----------------------------------------------------
 
-    phone_number = request.phone_number.strip()
+    email = str(
+        request.email
+    ).lower().strip()
+
+    phone_number = (
+        request.phone_number
+        .strip()
+    )
+
+    full_name = (
+        request.full_name
+        .strip()
+    )
+
 
     # -----------------------------------------------------
     # CHECK PHONE NUMBER
@@ -106,7 +133,8 @@ def register_user(
     existing_phone = (
         db.query(User)
         .filter(
-            User.phone_number == phone_number
+            User.phone_number
+            == phone_number
         )
         .first()
     )
@@ -117,10 +145,11 @@ def register_user(
             "success": False,
             "field": "phone",
             "message": (
-                "This mobile number is already registered. "
-                "Please login."
+                "This mobile number is already "
+                "registered. Please login."
             )
         }
+
 
     # -----------------------------------------------------
     # CHECK EMAIL
@@ -145,29 +174,45 @@ def register_user(
             )
         }
 
+
     # -----------------------------------------------------
     # CREATE USER
+    #
+    # IMPORTANT:
+    # We only create the basic account here.
+    #
+    # Profile fields such as:
+    # city
+    # state
+    # pincode
+    # vehicle_type
+    # vehicle_number
+    #
+    # will be completed later.
     # -----------------------------------------------------
 
     user = User(
+
         phone_number=phone_number,
-        full_name=request.full_name.strip(),
+
+        full_name=full_name,
+
         email=email,
-        city=request.city.strip(),
-        state=request.state.strip(),
-        pincode=request.pincode.strip(),
-        vehicle_type=request.vehicle_type.strip(),
-        vehicle_number=request.vehicle_number.strip(),
+
         is_approved=False,
+
         email_verified=False,
+
         status="pending_email_verification"
     )
+
 
     db.add(user)
 
     db.commit()
 
     db.refresh(user)
+
 
     # -----------------------------------------------------
     # REMOVE OLD REGISTRATION OTPs
@@ -179,25 +224,32 @@ def register_user(
         purpose="registration"
     )
 
+
     # -----------------------------------------------------
     # GENERATE OTP
     # -----------------------------------------------------
 
     otp = generate_otp()
 
+
     # -----------------------------------------------------
     # SAVE OTP
     # -----------------------------------------------------
 
     email_otp = EmailOTP(
+
         email=email,
+
         otp=otp,
+
         purpose="registration"
     )
+
 
     db.add(email_otp)
 
     db.commit()
+
 
     # -----------------------------------------------------
     # SEND OTP EMAIL
@@ -206,8 +258,11 @@ def register_user(
     try:
 
         send_otp_email(
+
             recipient_email=email,
+
             otp=otp,
+
             purpose="registration"
         )
 
@@ -218,34 +273,54 @@ def register_user(
             error
         )
 
-        # Remove OTP
+
+        # ---------------------------------------------
+        # REMOVE OTP
+        # ---------------------------------------------
+
         db.delete(email_otp)
 
-        # Remove user
+        db.commit()
+
+
+        # ---------------------------------------------
+        # REMOVE USER
+        # ---------------------------------------------
+
         db.delete(user)
 
         db.commit()
 
+
         return {
+
             "success": False,
+
             "field": "email",
+
             "message": (
-                "We could not send an OTP to this email address. "
-                "Please check your Gmail address and try again."
+                "We could not send an OTP to this "
+                "email address. Please check your "
+                "Gmail address and try again."
             )
         }
 
+
     # -----------------------------------------------------
-    # RESPONSE
+    # SUCCESS RESPONSE
     # -----------------------------------------------------
 
     return {
+
         "success": True,
+
         "message": (
             "Registration successful. "
             "OTP has been sent to your email."
         ),
+
         "user_id": user.id,
+
         "email": email
     }
 
@@ -256,84 +331,133 @@ def register_user(
 
 @router.post("/verify-registration-otp")
 def verify_registration_otp(
+
     email: str,
+
     otp: str,
+
     db: Session = Depends(get_db)
 ):
     """
-    Verify the OTP sent during new user registration.
+    Verify the OTP sent during
+    new user registration.
     """
 
-    email = email.lower().strip()
+    email = (
+        email
+        .lower()
+        .strip()
+    )
 
     otp = otp.strip()
+
 
     # -----------------------------------------------------
     # FIND OTP
     # -----------------------------------------------------
 
     otp_record = (
+
         db.query(EmailOTP)
+
         .filter(
+
             EmailOTP.email == email,
+
             EmailOTP.otp == otp,
-            EmailOTP.purpose == "registration"
+
+            EmailOTP.purpose
+            == "registration"
+
         )
+
         .order_by(
             EmailOTP.id.desc()
         )
+
         .first()
     )
+
+
+    # -----------------------------------------------------
+    # INVALID OTP
+    # -----------------------------------------------------
 
     if not otp_record:
 
         return {
+
             "success": False,
+
             "message": (
                 "Invalid OTP. "
-                "Please check your email and try again."
+                "Please check your email "
+                "and try again."
             )
         }
+
 
     # -----------------------------------------------------
     # CHECK EXPIRY
     # -----------------------------------------------------
 
-    if is_otp_expired(otp_record):
+    if is_otp_expired(
+        otp_record
+    ):
 
-        db.delete(otp_record)
+        db.delete(
+            otp_record
+        )
 
         db.commit()
 
+
         return {
+
             "success": False,
+
             "message": (
                 "This OTP has expired. "
                 "Please request a new OTP."
             )
         }
 
+
     # -----------------------------------------------------
     # FIND USER
     # -----------------------------------------------------
 
     user = (
+
         db.query(User)
+
         .filter(
             User.email == email
         )
+
         .first()
     )
 
+
     if not user:
 
+        db.delete(
+            otp_record
+        )
+
+        db.commit()
+
+
         return {
+
             "success": False,
+
             "message": (
                 "User account not found. "
                 "Please register again."
             )
         }
+
 
     # -----------------------------------------------------
     # VERIFY EMAIL
@@ -341,29 +465,47 @@ def verify_registration_otp(
 
     user.email_verified = True
 
-    user.status = "pending_documents"
+    user.status = "pending_profile"
+
 
     # -----------------------------------------------------
     # DELETE USED OTP
     # -----------------------------------------------------
 
-    db.delete(otp_record)
+    db.delete(
+        otp_record
+    )
 
     db.commit()
+
 
     # -----------------------------------------------------
     # RESPONSE
     # -----------------------------------------------------
 
     return {
+
         "success": True,
-        "message": "Email verified successfully.",
+
+        "message": (
+            "Email verified successfully."
+        ),
+
         "user": {
+
             "id": user.id,
-            "phone_number": user.phone_number,
-            "full_name": user.full_name,
-            "email": user.email,
-            "status": user.status
+
+            "phone_number":
+                user.phone_number,
+
+            "full_name":
+                user.full_name,
+
+            "email":
+                user.email,
+
+            "status":
+                user.status
         }
     }
 
@@ -374,35 +516,50 @@ def verify_registration_otp(
 
 @router.post("/register/resend-otp")
 def resend_registration_otp(
+
     email: str,
+
     db: Session = Depends(get_db)
 ):
     """
-    Resend OTP for new user registration.
+    Resend OTP for a new user registration.
     """
 
-    email = email.lower().strip()
+    email = (
+        email
+        .lower()
+        .strip()
+    )
+
 
     # -----------------------------------------------------
     # FIND USER
     # -----------------------------------------------------
 
     user = (
+
         db.query(User)
+
         .filter(
             User.email == email
         )
+
         .first()
     )
+
 
     if not user:
 
         return {
+
             "success": False,
+
             "message": (
-                "No registration found with this email."
+                "No registration found "
+                "with this email."
             )
         }
+
 
     # -----------------------------------------------------
     # ALREADY VERIFIED
@@ -411,21 +568,28 @@ def resend_registration_otp(
     if user.email_verified:
 
         return {
+
             "success": False,
+
             "message": (
                 "This email is already verified."
             )
         }
+
 
     # -----------------------------------------------------
     # REMOVE OLD OTPs
     # -----------------------------------------------------
 
     remove_old_otps(
+
         db=db,
+
         email=email,
+
         purpose="registration"
     )
+
 
     # -----------------------------------------------------
     # GENERATE NEW OTP
@@ -433,19 +597,27 @@ def resend_registration_otp(
 
     otp = generate_otp()
 
+
     # -----------------------------------------------------
-    # SAVE OTP
+    # SAVE NEW OTP
     # -----------------------------------------------------
 
     email_otp = EmailOTP(
+
         email=email,
+
         otp=otp,
+
         purpose="registration"
     )
 
-    db.add(email_otp)
+
+    db.add(
+        email_otp
+    )
 
     db.commit()
+
 
     # -----------------------------------------------------
     # SEND EMAIL
@@ -454,8 +626,11 @@ def resend_registration_otp(
     try:
 
         send_otp_email(
+
             recipient_email=email,
+
             otp=otp,
+
             purpose="registration"
         )
 
@@ -466,22 +641,37 @@ def resend_registration_otp(
             error
         )
 
-        db.delete(email_otp)
+
+        db.delete(
+            email_otp
+        )
 
         db.commit()
 
+
         return {
+
             "success": False,
+
             "message": (
                 "Unable to send OTP. "
-                "Please check your email and try again."
+                "Please check your email "
+                "and try again."
             )
         }
 
+
+    # -----------------------------------------------------
+    # RESPONSE
+    # -----------------------------------------------------
+
     return {
+
         "success": True,
+
         "message": (
-            "A new OTP has been sent to your email."
+            "A new OTP has been sent "
+            "to your email."
         )
     }
 
@@ -492,26 +682,38 @@ def resend_registration_otp(
 
 @router.post("/login/send-otp")
 def send_login_otp(
+
     email: str,
+
     db: Session = Depends(get_db)
 ):
     """
-    Send login OTP to an existing verified user.
+    Send login OTP to an existing
+    verified user.
     """
 
-    email = email.lower().strip()
+    email = (
+        email
+        .lower()
+        .strip()
+    )
+
 
     # -----------------------------------------------------
     # FIND USER
     # -----------------------------------------------------
 
     user = (
+
         db.query(User)
+
         .filter(
             User.email == email
         )
+
         .first()
     )
+
 
     # -----------------------------------------------------
     # EMAIL NOT REGISTERED
@@ -520,13 +722,18 @@ def send_login_otp(
     if not user:
 
         return {
+
             "success": False,
+
             "field": "email",
+
             "message": (
-                "No account was found with this email. "
+                "No account was found "
+                "with this email. "
                 "Please register first."
             )
         }
+
 
     # -----------------------------------------------------
     # EMAIL NOT VERIFIED
@@ -535,23 +742,31 @@ def send_login_otp(
     if not user.email_verified:
 
         return {
+
             "success": False,
+
             "field": "email",
+
             "message": (
                 "Your email has not been verified. "
                 "Please complete registration first."
             )
         }
 
+
     # -----------------------------------------------------
     # REMOVE OLD LOGIN OTPs
     # -----------------------------------------------------
 
     remove_old_otps(
+
         db=db,
+
         email=email,
+
         purpose="login"
     )
+
 
     # -----------------------------------------------------
     # GENERATE OTP
@@ -559,19 +774,27 @@ def send_login_otp(
 
     otp = generate_otp()
 
+
     # -----------------------------------------------------
     # SAVE OTP
     # -----------------------------------------------------
 
     email_otp = EmailOTP(
+
         email=email,
+
         otp=otp,
+
         purpose="login"
     )
 
-    db.add(email_otp)
+
+    db.add(
+        email_otp
+    )
 
     db.commit()
+
 
     # -----------------------------------------------------
     # SEND LOGIN OTP
@@ -580,8 +803,11 @@ def send_login_otp(
     try:
 
         send_otp_email(
+
             recipient_email=email,
+
             otp=otp,
+
             purpose="login"
         )
 
@@ -592,28 +818,41 @@ def send_login_otp(
             error
         )
 
-        db.delete(email_otp)
+
+        db.delete(
+            email_otp
+        )
 
         db.commit()
 
+
         return {
+
             "success": False,
+
             "field": "email",
+
             "message": (
                 "We could not send the login OTP. "
-                "Please check your email and try again."
+                "Please check your email "
+                "and try again."
             )
         }
+
 
     # -----------------------------------------------------
     # RESPONSE
     # -----------------------------------------------------
 
     return {
+
         "success": True,
+
         "message": (
-            "Login OTP has been sent to your email."
+            "Login OTP has been sent "
+            "to your email."
         ),
+
         "email": email
     }
 
@@ -624,116 +863,189 @@ def send_login_otp(
 
 @router.post("/login/verify-otp")
 def verify_login_otp(
+
     email: str,
+
     otp: str,
+
     db: Session = Depends(get_db)
 ):
     """
-    Verify login OTP and return driver information.
+    Verify login OTP and return
+    user information.
     """
 
-    email = email.lower().strip()
+    email = (
+        email
+        .lower()
+        .strip()
+    )
 
     otp = otp.strip()
+
 
     # -----------------------------------------------------
     # FIND OTP
     # -----------------------------------------------------
 
     otp_record = (
+
         db.query(EmailOTP)
+
         .filter(
+
             EmailOTP.email == email,
+
             EmailOTP.otp == otp,
-            EmailOTP.purpose == "login"
+
+            EmailOTP.purpose
+            == "login"
+
         )
+
         .order_by(
             EmailOTP.id.desc()
         )
+
         .first()
     )
+
+
+    # -----------------------------------------------------
+    # INVALID OTP
+    # -----------------------------------------------------
 
     if not otp_record:
 
         return {
+
             "success": False,
+
             "message": (
                 "Invalid OTP. "
-                "Please check the OTP and try again."
+                "Please check the OTP "
+                "and try again."
             )
         }
+
 
     # -----------------------------------------------------
     # CHECK EXPIRY
     # -----------------------------------------------------
 
-    if is_otp_expired(otp_record):
+    if is_otp_expired(
+        otp_record
+    ):
 
-        db.delete(otp_record)
+        db.delete(
+            otp_record
+        )
 
         db.commit()
 
+
         return {
+
             "success": False,
+
             "message": (
                 "This OTP has expired. "
                 "Please request a new OTP."
             )
         }
 
+
     # -----------------------------------------------------
     # FIND USER
     # -----------------------------------------------------
 
     user = (
+
         db.query(User)
+
         .filter(
             User.email == email
         )
+
         .first()
     )
 
+
     if not user:
 
-        db.delete(otp_record)
+        db.delete(
+            otp_record
+        )
 
         db.commit()
 
+
         return {
+
             "success": False,
+
             "message": (
                 "User account not found."
             )
         }
 
+
     # -----------------------------------------------------
     # DELETE USED OTP
     # -----------------------------------------------------
 
-    db.delete(otp_record)
+    db.delete(
+        otp_record
+    )
 
     db.commit()
 
+
     # -----------------------------------------------------
-    # RETURN USER
+    # RESPONSE
     # -----------------------------------------------------
 
     return {
+
         "success": True,
+
         "message": "Login successful.",
+
         "status": user.status,
+
         "user": {
+
             "id": user.id,
-            "phone_number": user.phone_number,
-            "full_name": user.full_name,
-            "email": user.email,
-            "city": user.city,
-            "state": user.state,
-            "pincode": user.pincode,
-            "vehicle_type": user.vehicle_type,
-            "vehicle_number": user.vehicle_number,
-            "is_approved": user.is_approved,
-            "email_verified": user.email_verified
+
+            "phone_number":
+                user.phone_number,
+
+            "full_name":
+                user.full_name,
+
+            "email":
+                user.email,
+
+            "city":
+                user.city,
+
+            "state":
+                user.state,
+
+            "pincode":
+                user.pincode,
+
+            "vehicle_type":
+                user.vehicle_type,
+
+            "vehicle_number":
+                user.vehicle_number,
+
+            "is_approved":
+                user.is_approved,
+
+            "email_verified":
+                user.email_verified
         }
     }
 
@@ -747,11 +1059,14 @@ def old_phone_otp_endpoint():
     """
     Temporary compatibility endpoint.
 
-    Phone OTP login has been replaced by email OTP login.
+    Phone OTP login has been replaced
+    with email OTP login.
     """
 
     return {
+
         "success": False,
+
         "message": (
             "Phone OTP login is no longer supported. "
             "Please use email login."
