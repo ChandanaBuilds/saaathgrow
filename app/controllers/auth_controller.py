@@ -167,60 +167,220 @@ def register_user(
     }
     
 @router.post("/upload-documents")
-def upload_documents(
+async def upload_documents(
     user_id: int = Form(...),
+
     profile_photo: UploadFile = File(None),
+
     aadhaar_front: UploadFile = File(None),
     aadhaar_back: UploadFile = File(None),
+
     pan_card: UploadFile = File(None),
+
     driving_license_front: UploadFile = File(None),
     driving_license_back: UploadFile = File(None),
+
     vehicle_rc: UploadFile = File(None),
+
     insurance: UploadFile = File(None),
+
     db: Session = Depends(get_db)
 ):
-    os.makedirs("uploads", exist_ok=True)
+    print("======================================")
+    print("DOCUMENT UPLOAD REQUEST")
+    print("USER ID:", user_id)
+    print("======================================")
+
+    # --------------------------------------------------
+    # CHECK USER
+    # --------------------------------------------------
+
+    user = (
+        db.query(User)
+        .filter(User.id == user_id)
+        .first()
+    )
+
+    if not user:
+
+        print("USER NOT FOUND:", user_id)
+
+        return {
+            "success": False,
+            "message": "User account not found."
+        }
+
+    # --------------------------------------------------
+    # CREATE UPLOAD DIRECTORY
+    # --------------------------------------------------
+
+    upload_directory = "uploads"
+
+    os.makedirs(
+        upload_directory,
+        exist_ok=True
+    )
+
+    # --------------------------------------------------
+    # CREATE DOCUMENT RECORD
+    # --------------------------------------------------
 
     document = Document(
         user_id=user_id
     )
 
+    # --------------------------------------------------
+    # FILES
+    # --------------------------------------------------
+
     files = {
         "profile_photo": profile_photo,
+
         "aadhaar_front": aadhaar_front,
         "aadhaar_back": aadhaar_back,
+
         "pan_card": pan_card,
-        "driving_license_front": driving_license_front,
-        "driving_license_back": driving_license_back,
+
+        "driving_license_front":
+            driving_license_front,
+
+        "driving_license_back":
+            driving_license_back,
+
         "vehicle_rc": vehicle_rc,
+
         "insurance": insurance,
     }
 
-    for field_name, file in files.items():
-        if file:
-            file_path = f"uploads/{user_id}_{file.filename}"
+    uploaded_files = []
 
-            with open(file_path, "wb") as buffer:
+    # --------------------------------------------------
+    # SAVE FILES
+    # --------------------------------------------------
+
+    for field_name, file in files.items():
+
+        if file is None:
+            continue
+
+        print(
+            "Uploading:",
+            field_name,
+            file.filename
+        )
+
+        # Prevent empty files
+        if not file.filename:
+            continue
+
+        # Simple safe filename
+        safe_filename = os.path.basename(
+            file.filename
+        )
+
+        file_path = os.path.join(
+            upload_directory,
+            f"{user_id}_{safe_filename}"
+        )
+
+        try:
+
+            with open(
+                file_path,
+                "wb"
+            ) as buffer:
+
                 shutil.copyfileobj(
                     file.file,
                     buffer
                 )
 
-            setattr(
-                document,
-                field_name,
-                file_path
+        except Exception as error:
+
+            print(
+                "FILE SAVE ERROR:",
+                error
             )
 
+            return {
+                "success": False,
+                "message": (
+                    f"Unable to save "
+                    f"{field_name}."
+                )
+            }
+
+        # Save path in database
+        setattr(
+            document,
+            field_name,
+            file_path
+        )
+
+        uploaded_files.append(
+            field_name
+        )
+
+        print(
+            "Saved:",
+            file_path
+        )
+
+    # --------------------------------------------------
+    # CHECK DOCUMENTS
+    # --------------------------------------------------
+
+    if not uploaded_files:
+
+        return {
+            "success": False,
+            "message": (
+                "Please upload at least "
+                "one document."
+            )
+        }
+
+    # --------------------------------------------------
+    # SAVE DOCUMENT RECORD
+    # --------------------------------------------------
+
     db.add(document)
-    user = db.query(User).filter(
-    User.id == user_id
-    ).first()
+
     user.status = "pending_verification"
+
     db.commit()
+
     db.refresh(document)
 
+    print(
+        "DOCUMENTS SAVED SUCCESSFULLY"
+    )
+
+    print(
+        "DOCUMENT ID:",
+        document.id
+    )
+
+    print(
+        "USER STATUS:",
+        user.status
+    )
+
+    print("======================================")
+
     return {
+
         "success": True,
-        "message": "Documents uploaded successfully"
+
+        "message":
+            "Documents uploaded successfully.",
+
+        "user_id":
+            user_id,
+
+        "document_id":
+            document.id,
+
+        "uploaded_files":
+            uploaded_files
     }

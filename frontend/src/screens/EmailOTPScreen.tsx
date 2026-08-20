@@ -7,13 +7,15 @@ import {
     TouchableOpacity,
     StyleSheet,
     StatusBar,
-    Alert,
     ActivityIndicator,
 } from "react-native";
 
 import axios from "axios";
 
-import { useNavigation, useRoute } from "@react-navigation/native";
+import {
+    useNavigation,
+    useRoute,
+} from "@react-navigation/native";
 
 
 const API_URL =
@@ -28,7 +30,7 @@ export default function EmailOTPScreen() {
 
 
     // =====================================================
-    // DATA FROM REGISTER SCREEN
+    // DATA FROM PREVIOUS SCREEN
     // =====================================================
 
     const email =
@@ -54,6 +56,12 @@ export default function EmailOTPScreen() {
     const [countdown, setCountdown] =
         useState(30);
 
+    const [message, setMessage] =
+        useState("");
+
+    const [messageType, setMessageType] =
+        useState<"success" | "error" | "">("");
+
 
     // =====================================================
     // COUNTDOWN
@@ -75,10 +83,26 @@ export default function EmailOTPScreen() {
             }, 1000);
 
 
-        return () =>
+        return () => {
             clearInterval(timer);
+        };
 
     }, [countdown]);
+
+
+    // =====================================================
+    // SHOW MESSAGE
+    // =====================================================
+
+    const showMessage = (
+        text: string,
+        type: "success" | "error"
+    ) => {
+
+        setMessage(text);
+        setMessageType(type);
+
+    };
 
 
     // =====================================================
@@ -92,14 +116,22 @@ export default function EmailOTPScreen() {
 
 
         // -------------------------------------------------
-        // OTP VALIDATION
+        // CLEAR PREVIOUS MESSAGE
+        // -------------------------------------------------
+
+        setMessage("");
+        setMessageType("");
+
+
+        // -------------------------------------------------
+        // VALIDATE OTP
         // -------------------------------------------------
 
         if (!cleanOTP) {
 
-            Alert.alert(
-                "OTP Required",
-                "Please enter the OTP sent to your email."
+            showMessage(
+                "Please enter the OTP sent to your email.",
+                "error"
             );
 
             return;
@@ -108,9 +140,9 @@ export default function EmailOTPScreen() {
 
         if (!/^\d{6}$/.test(cleanOTP)) {
 
-            Alert.alert(
-                "Invalid OTP",
-                "Please enter the 6-digit OTP."
+            showMessage(
+                "Please enter the 6-digit OTP.",
+                "error"
             );
 
             return;
@@ -127,6 +159,7 @@ export default function EmailOTPScreen() {
                 {
                     email,
                     otp: cleanOTP,
+                    purpose,
                 }
             );
 
@@ -135,101 +168,278 @@ export default function EmailOTPScreen() {
             // REGISTRATION OTP
             // =================================================
 
-            const response =
-                await axios.post(
+            if (purpose === "registration") {
 
-                    `${API_URL}/auth/verify-registration-otp`,
+                const response =
+                    await axios.post(
 
-                    null,
+                        `${API_URL}/auth/verify-registration-otp`,
 
-                    {
-                        params: {
-                            email: email,
-                            otp: cleanOTP,
-                        },
+                        null,
 
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-                        },
+                        {
+                            params: {
+                                email: email,
+                                otp: cleanOTP,
+                            },
 
-                        timeout: 30000,
-                    }
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
+
+                            timeout: 30000,
+                        }
+                    );
+
+
+                const data =
+                    response.data;
+
+
+                console.log(
+                    "REGISTRATION OTP RESPONSE:",
+                    data
                 );
 
 
-            const data =
-                response.data;
+                // -------------------------------------------------
+                // REGISTRATION FAILED
+                // -------------------------------------------------
+
+                if (!data.success) {
+
+                    showMessage(
+                        data.message ||
+                        "Invalid OTP. Please try again.",
+                        "error"
+                    );
+
+                    return;
+                }
 
 
-            console.log(
-                "EMAIL OTP RESPONSE:",
-                data
-            );
+                // -------------------------------------------------
+                // REGISTRATION SUCCESS
+                // -------------------------------------------------
 
-
-            // =================================================
-            // FAILED
-            // =================================================
-
-            if (!data.success) {
-
-                Alert.alert(
-                    "Verification Failed",
-                    data.message ||
-                    "Invalid OTP. Please try again."
+                showMessage(
+                    "Your email has been successfully registered. Please login to continue.",
+                    "success"
                 );
+
+
+                console.log(
+                    "EMAIL REGISTRATION SUCCESS"
+                );
+
+                console.log(
+                    "USER MUST LOGIN BEFORE CREATING PROFILE"
+                );
+
+
+                // -------------------------------------------------
+                // MOVE TO LOGIN
+                //
+                // We wait 1.5 seconds so the user can
+                // see the success message.
+                // -------------------------------------------------
+
+                setTimeout(() => {
+
+                    navigation.replace(
+                        "Login"
+                    );
+
+                }, 1500);
+
 
                 return;
             }
 
 
             // =================================================
-            // SUCCESS
+            // LOGIN OTP
             // =================================================
 
-            /*
-             * IMPORTANT:
-             *
-             * Do NOT navigate immediately.
-             *
-             * First show the success message.
-             */
+            if (purpose === "login") {
 
-            Alert.alert(
+                const response =
+                    await axios.post(
 
-                "Email Successfully Registered",
+                        `${API_URL}/auth/login/verify-otp`,
 
-                "Your email has been successfully verified and registered.",
+                        null,
 
-                [
-                    {
-                        text: "Continue",
+                        {
+                            params: {
+                                email: email,
+                                otp: cleanOTP,
+                            },
 
-                        onPress: () => {
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
 
-                            console.log(
-                                "Moving to Create Profile"
-                            );
+                            timeout: 30000,
+                        }
+                    );
 
 
-                            // =================================================
-                            // MOVE TO CREATE PROFILE
-                            // =================================================
+                const data =
+                    response.data;
 
-                            navigation.replace(
-                                "CreateProfile",
-                                {
-                                    email: email,
 
-                                    user: data.user,
-                                }
-                            );
+                console.log(
+                    "LOGIN OTP RESPONSE:",
+                    data
+                );
 
-                        },
-                    },
-                ]
 
+                // -------------------------------------------------
+                // LOGIN FAILED
+                // -------------------------------------------------
+
+                if (!data.success) {
+
+                    showMessage(
+                        data.message ||
+                        "Invalid OTP. Please try again.",
+                        "error"
+                    );
+
+                    return;
+                }
+
+
+                console.log(
+                    "LOGIN SUCCESS:",
+                    data.user
+                );
+
+
+                // =================================================
+                // CHECK PROFILE STATUS
+                // =================================================
+
+                const userStatus =
+                    data.status ||
+                    data.user?.status;
+
+
+                console.log(
+                    "USER STATUS:",
+                    userStatus
+                );
+
+
+                // -------------------------------------------------
+                // PROFILE NOT COMPLETED
+                // -------------------------------------------------
+
+                if (
+                    userStatus ===
+                    "pending_profile"
+                ) {
+
+                    showMessage(
+                        "Login successful. Please complete your profile.",
+                        "success"
+                    );
+
+
+                    console.log(
+                        "PROFILE NOT COMPLETED"
+                    );
+
+                    console.log(
+                        "MOVING TO CREATE PROFILE"
+                    );
+
+
+                    setTimeout(() => {
+
+                        navigation.replace(
+                            "CreateProfile",
+                            {
+                                userId:
+                                    data.user?.id,
+
+                                email:
+                                    data.user?.email ||
+                                    email,
+
+                                fullName:
+                                    data.user?.full_name ||
+                                    "",
+
+                                phoneNumber:
+                                    data.user?.phone_number ||
+                                    "",
+
+                                user:
+                                    data.user,
+                            }
+                        );
+
+                    }, 1000);
+
+
+                    return;
+                }
+
+
+                // =================================================
+                // PROFILE COMPLETED
+                // =================================================
+
+                showMessage(
+                    "Login successful. Redirecting to dashboard...",
+                    "success"
+                );
+
+
+                console.log(
+                    "PROFILE COMPLETED"
+                );
+
+                console.log(
+                    "MOVING TO DASHBOARD"
+                );
+
+
+                setTimeout(() => {
+
+                    navigation.replace(
+                        "Dashboard",
+                        {
+                            user:
+                                data.user,
+
+                            userId:
+                                data.user?.id,
+
+                            email:
+                                data.user?.email ||
+                                email,
+                        }
+                    );
+
+                }, 1000);
+
+
+                return;
+            }
+
+
+            // =================================================
+            // UNKNOWN PURPOSE
+            // =================================================
+
+            showMessage(
+                "Invalid verification request. Please try again.",
+                "error"
             );
 
 
@@ -242,14 +452,14 @@ export default function EmailOTPScreen() {
             );
 
 
-            const message =
-                error.response?.data?.message ||
-                "Unable to verify OTP. Please try again.";
+            const serverMessage =
+                error.response?.data?.message;
 
 
-            Alert.alert(
-                "Verification Error",
-                message
+            showMessage(
+                serverMessage ||
+                "Unable to verify OTP. Please try again.",
+                "error"
             );
 
 
@@ -273,6 +483,10 @@ export default function EmailOTPScreen() {
         }
 
 
+        setMessage("");
+        setMessageType("");
+
+
         try {
 
             setResendLoading(true);
@@ -280,64 +494,146 @@ export default function EmailOTPScreen() {
 
             console.log(
                 "RESEND OTP REQUEST:",
-                email
+                {
+                    email,
+                    purpose,
+                }
             );
 
 
-            const response =
-                await axios.post(
+            // =================================================
+            // REGISTRATION RESEND
+            // =================================================
 
-                    `${API_URL}/auth/register/resend-otp`,
+            if (purpose === "registration") {
 
-                    null,
+                const response =
+                    await axios.post(
 
-                    {
-                        params: {
-                            email: email,
-                        },
+                        `${API_URL}/auth/register/resend-otp`,
 
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-                        },
+                        null,
 
-                        timeout: 30000,
-                    }
+                        {
+                            params: {
+                                email: email,
+                            },
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
+
+                            timeout: 30000,
+                        }
+                    );
+
+
+                const data =
+                    response.data;
+
+
+                console.log(
+                    "REGISTRATION RESEND RESPONSE:",
+                    data
                 );
 
 
-            const data =
-                response.data;
+                if (!data.success) {
+
+                    showMessage(
+                        data.message ||
+                        "Unable to resend OTP.",
+                        "error"
+                    );
+
+                    return;
+                }
 
 
-            console.log(
-                "RESEND OTP RESPONSE:",
-                data
-            );
+                setCountdown(30);
+
+                setOtp("");
 
 
-            if (!data.success) {
-
-                Alert.alert(
-                    "Unable to Resend",
-                    data.message ||
-                    "Unable to resend OTP."
+                showMessage(
+                    "A new OTP has been sent to your email.",
+                    "success"
                 );
+
 
                 return;
             }
 
 
-            // Reset countdown
+            // =================================================
+            // LOGIN RESEND
+            // =================================================
 
-            setCountdown(30);
+            if (purpose === "login") {
 
-            setOtp("");
+                const response =
+                    await axios.post(
+
+                        `${API_URL}/auth/login/send-otp`,
+
+                        null,
+
+                        {
+                            params: {
+                                email: email,
+                            },
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
+
+                            timeout: 30000,
+                        }
+                    );
 
 
-            Alert.alert(
-                "OTP Sent",
-                "A new OTP has been sent to your email."
+                const data =
+                    response.data;
+
+
+                console.log(
+                    "LOGIN RESEND RESPONSE:",
+                    data
+                );
+
+
+                if (!data.success) {
+
+                    showMessage(
+                        data.message ||
+                        "Unable to resend OTP.",
+                        "error"
+                    );
+
+                    return;
+                }
+
+
+                setCountdown(30);
+
+                setOtp("");
+
+
+                showMessage(
+                    "A new login OTP has been sent to your email.",
+                    "success"
+                );
+
+
+                return;
+            }
+
+
+            showMessage(
+                "Unable to resend OTP.",
+                "error"
             );
 
 
@@ -350,14 +646,10 @@ export default function EmailOTPScreen() {
             );
 
 
-            const message =
+            showMessage(
                 error.response?.data?.message ||
-                "Unable to resend OTP. Please try again.";
-
-
-            Alert.alert(
-                "Resend Failed",
-                message
+                "Unable to resend OTP. Please try again.",
+                "error"
             );
 
 
@@ -375,6 +667,10 @@ export default function EmailOTPScreen() {
     // =====================================================
 
     const handleChangeEmail = () => {
+
+        if (loading) {
+            return;
+        }
 
         navigation.goBack();
 
@@ -457,6 +753,21 @@ export default function EmailOTPScreen() {
                         numbersOnly.slice(0, 6)
                     );
 
+
+                    // Clear error when user
+                    // starts typing again
+
+                    if (
+                        messageType ===
+                        "error"
+                    ) {
+
+                        setMessage("");
+
+                        setMessageType("");
+
+                    }
+
                 }}
 
                 placeholder="Enter OTP"
@@ -513,7 +824,40 @@ export default function EmailOTPScreen() {
 
 
             {/* =================================================
-                RESEND
+                MESSAGE
+            ================================================= */}
+
+            {message ? (
+
+                <View
+                    style={[
+                        styles.messageContainer,
+
+                        messageType === "error"
+                            ? styles.errorMessageContainer
+                            : styles.successMessageContainer,
+                    ]}
+                >
+
+                    <Text
+                        style={[
+                            styles.messageText,
+
+                            messageType === "error"
+                                ? styles.errorMessageText
+                                : styles.successMessageText,
+                        ]}
+                    >
+                        {message}
+                    </Text>
+
+                </View>
+
+            ) : null}
+
+
+            {/* =================================================
+                RESEND OTP
             ================================================= */}
 
             <TouchableOpacity
@@ -522,7 +866,8 @@ export default function EmailOTPScreen() {
 
                 disabled={
                     countdown > 0 ||
-                    resendLoading
+                    resendLoading ||
+                    loading
                 }
 
                 style={styles.resendButton}
@@ -694,7 +1039,7 @@ const styles = StyleSheet.create({
 
 
     // -------------------------------------------------------
-    // OTP
+    // OTP INPUT
     // -------------------------------------------------------
 
     otpInput: {
@@ -723,7 +1068,7 @@ const styles = StyleSheet.create({
 
 
     // -------------------------------------------------------
-    // BUTTON
+    // VERIFY BUTTON
     // -------------------------------------------------------
 
     button: {
@@ -757,6 +1102,72 @@ const styles = StyleSheet.create({
         fontSize: 17,
 
         fontWeight: "700",
+
+    },
+
+
+    // -------------------------------------------------------
+    // MESSAGE
+    // -------------------------------------------------------
+
+    messageContainer: {
+
+        marginTop: 12,
+
+        paddingHorizontal: 14,
+
+        paddingVertical: 10,
+
+        borderRadius: 10,
+
+    },
+
+
+    errorMessageContainer: {
+
+        backgroundColor: "#FDECEC",
+
+        borderWidth: 1,
+
+        borderColor: "#F5B5B5",
+
+    },
+
+
+    successMessageContainer: {
+
+        backgroundColor: "#E8F8EF",
+
+        borderWidth: 1,
+
+        borderColor: "#9DDBB5",
+
+    },
+
+
+    messageText: {
+
+        fontSize: 14,
+
+        textAlign: "center",
+
+        fontWeight: "600",
+
+        lineHeight: 20,
+
+    },
+
+
+    errorMessageText: {
+
+        color: "#D32F2F",
+
+    },
+
+
+    successMessageText: {
+
+        color: "#1DAB52",
 
     },
 

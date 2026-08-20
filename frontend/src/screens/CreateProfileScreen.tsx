@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
     View,
@@ -8,33 +7,56 @@ import {
     TouchableOpacity,
     StyleSheet,
     ScrollView,
-    Alert,
     ActivityIndicator,
 } from "react-native";
 
-import axios from "axios";
+import { useRoute, useNavigation } from "@react-navigation/native";
 
 
-const API_URL =
-    "https://saaathgrow.onrender.com";
+export default function CreateProfileScreen() {
+
+    const navigation = useNavigation<any>();
+    const route = useRoute<any>();
 
 
-export default function CreateProfileScreen({
-    navigation,
-}: any) {
+    // =====================================================
+    // USER DATA FROM LOGIN
+    // =====================================================
+
+    const user = route.params?.user;
+
+    const userId =
+        route.params?.userId ||
+        user?.id;
+
+    const registeredEmail =
+        route.params?.email ||
+        user?.email ||
+        "";
+
+    const registeredName =
+        route.params?.fullName ||
+        user?.full_name ||
+        "";
+
+    const registeredPhone =
+        route.params?.phoneNumber ||
+        user?.phone_number ||
+        "";
+
 
     // =====================================================
     // FORM STATE
     // =====================================================
 
     const [fullName, setFullName] =
-        useState("");
+        useState(registeredName);
 
     const [email, setEmail] =
-        useState("");
+        useState(registeredEmail);
 
     const [mobile, setMobile] =
-        useState("");
+        useState(registeredPhone);
 
     const [address, setAddress] =
         useState("");
@@ -62,24 +84,7 @@ export default function CreateProfileScreen({
 
 
     // =====================================================
-    // EMAIL VALIDATION
-    // =====================================================
-
-    const isValidEmail = (
-        emailAddress: string
-    ) => {
-
-        const emailRegex =
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        return emailRegex.test(
-            emailAddress.trim()
-        );
-    };
-
-
-    // =====================================================
-    // PHONE VALIDATION
+    // VALIDATION
     // =====================================================
 
     const isValidPhone = (
@@ -89,12 +94,9 @@ export default function CreateProfileScreen({
         return /^[6-9]\d{9}$/.test(
             phone.trim()
         );
+
     };
 
-
-    // =====================================================
-    // VEHICLE NUMBER VALIDATION
-    // =====================================================
 
     const isValidVehicleNumber = (
         number: string
@@ -103,11 +105,12 @@ export default function CreateProfileScreen({
         return /^[A-Za-z0-9 -]{4,15}$/.test(
             number.trim()
         );
+
     };
 
 
     // =====================================================
-    // HANDLE REGISTRATION
+    // CONTINUE
     // =====================================================
 
     const handleContinue = async () => {
@@ -143,13 +146,12 @@ export default function CreateProfileScreen({
 
 
         // =================================================
-        // REQUIRED FIELD VALIDATION
+        // VALIDATION
         // =================================================
 
         if (!cleanName) {
 
-            Alert.alert(
-                "Name Required",
+            setErrorMessage(
                 "Please enter your full name."
             );
 
@@ -159,20 +161,8 @@ export default function CreateProfileScreen({
 
         if (!cleanEmail) {
 
-            Alert.alert(
-                "Gmail Required",
-                "Please enter your Gmail address."
-            );
-
-            return;
-        }
-
-
-        if (!isValidEmail(cleanEmail)) {
-
-            Alert.alert(
-                "Invalid Gmail",
-                "Please enter a valid Gmail address."
+            setErrorMessage(
+                "Your email address is required."
             );
 
             return;
@@ -181,8 +171,7 @@ export default function CreateProfileScreen({
 
         if (!cleanMobile) {
 
-            Alert.alert(
-                "Mobile Number Required",
+            setErrorMessage(
                 "Please enter your mobile number."
             );
 
@@ -192,9 +181,8 @@ export default function CreateProfileScreen({
 
         if (!isValidPhone(cleanMobile)) {
 
-            Alert.alert(
-                "Invalid Mobile Number",
-                "Please enter a valid 10 digit Indian mobile number."
+            setErrorMessage(
+                "Please enter a valid 10-digit mobile number."
             );
 
             return;
@@ -203,8 +191,7 @@ export default function CreateProfileScreen({
 
         if (!cleanAddress) {
 
-            Alert.alert(
-                "Address Required",
+            setErrorMessage(
                 "Please enter your address."
             );
 
@@ -214,8 +201,7 @@ export default function CreateProfileScreen({
 
         if (!cleanCity) {
 
-            Alert.alert(
-                "City Required",
+            setErrorMessage(
                 "Please enter your city."
             );
 
@@ -225,8 +211,7 @@ export default function CreateProfileScreen({
 
         if (!cleanState) {
 
-            Alert.alert(
-                "State Required",
+            setErrorMessage(
                 "Please enter your state."
             );
 
@@ -239,9 +224,8 @@ export default function CreateProfileScreen({
             !/^\d{6}$/.test(cleanPincode)
         ) {
 
-            Alert.alert(
-                "Invalid Pincode",
-                "Please enter a valid 6 digit pincode."
+            setErrorMessage(
+                "Please enter a valid 6-digit pincode."
             );
 
             return;
@@ -250,8 +234,7 @@ export default function CreateProfileScreen({
 
         if (!cleanVehicleType) {
 
-            Alert.alert(
-                "Vehicle Type Required",
+            setErrorMessage(
                 "Please enter your vehicle type."
             );
 
@@ -261,8 +244,7 @@ export default function CreateProfileScreen({
 
         if (!cleanVehicleNumber) {
 
-            Alert.alert(
-                "Vehicle Number Required",
+            setErrorMessage(
                 "Please enter your vehicle number."
             );
 
@@ -276,8 +258,7 @@ export default function CreateProfileScreen({
             )
         ) {
 
-            Alert.alert(
-                "Invalid Vehicle Number",
+            setErrorMessage(
                 "Please enter a valid vehicle number."
             );
 
@@ -286,607 +267,896 @@ export default function CreateProfileScreen({
 
 
         // =================================================
-        // SEND REGISTRATION REQUEST
+        // CONTINUE TO DOCUMENT UPLOAD
         // =================================================
 
         try {
 
             setLoading(true);
 
+            setErrorMessage("");
+
 
             console.log(
-                "REGISTERING USER:",
+                "PROFILE DETAILS:",
                 {
-                    phone_number:
-                        cleanMobile,
-
-                    full_name:
-                        cleanName,
-
-                    email:
-                        cleanEmail,
-
-                    city:
-                        cleanCity,
-
-                    state:
-                        cleanState,
-
-                    pincode:
-                        cleanPincode,
-
-                    vehicle_type:
-                        cleanVehicleType,
-
-                    vehicle_number:
-                        cleanVehicleNumber,
+                    userId,
+                    fullName: cleanName,
+                    email: cleanEmail,
+                    mobile: cleanMobile,
+                    address: cleanAddress,
+                    city: cleanCity,
+                    state: cleanState,
+                    pincode: cleanPincode,
+                    referralCode,
+                    vehicleType: cleanVehicleType,
+                    vehicleNumber: cleanVehicleNumber,
                 }
             );
 
 
-            const response =
-                await axios.post(
+            /*
+             * IMPORTANT
+             *
+             * We are moving to the document upload
+             * screen here.
+             *
+             * Once your backend profile-update API
+             * is ready, save these details here before
+             * navigating.
+             */
 
-                    `${API_URL}/auth/register`,
 
+            setTimeout(() => {
+
+                navigation.replace(
+                    "DocumentUpload",
                     {
-                        phone_number:
-                            cleanMobile,
+                        userId: userId,
 
-                        full_name:
-                            cleanName,
-
-                        email:
-                            cleanEmail,
-
-                        city:
-                            cleanCity,
-
-                        state:
-                            cleanState,
-
-                        pincode:
-                            cleanPincode,
-
-                        vehicle_type:
-                            cleanVehicleType,
-
-                        vehicle_number:
-                            cleanVehicleNumber,
-                    },
-
-                    {
-                        headers: {
-                            "Content-Type":
-                                "application/json",
+                        profile: {
+                            fullName: cleanName,
+                            email: cleanEmail,
+                            mobile: cleanMobile,
+                            address: cleanAddress,
+                            city: cleanCity,
+                            state: cleanState,
+                            pincode: cleanPincode,
+                            referralCode,
+                            vehicleType: cleanVehicleType,
+                            vehicleNumber: cleanVehicleNumber,
                         },
-
-                        timeout: 30000,
                     }
                 );
 
-
-            const data =
-                response.data;
+            }, 300);
 
 
-            console.log(
-                "REGISTER RESPONSE:",
-                data
-            );
-
-
-            // =================================================
-            // REGISTRATION FAILED
-            // =================================================
-
-            if (!data.success) {
-
-                Alert.alert(
-                    "Registration Failed",
-                    data.message ||
-                    "Unable to register."
-                );
-
-                return;
-            }
-
-
-            // =================================================
-            // REGISTRATION SUCCESS
-            // =================================================
-
-            Alert.alert(
-                "Registration Successful",
-                "A verification OTP has been sent to your Gmail.",
-                [
-                    {
-                        text: "Continue",
-
-                        onPress: () => {
-
-                            navigation.replace(
-                                "EmailOTP",
-                                {
-                                    email:
-                                        data.email,
-
-                                    purpose:
-                                        "registration",
-                                }
-                            );
-
-                        },
-                    },
-                ]
-            );
-
-
-        } catch (error: any) {
+        } catch (error) {
 
             console.log(
-                "REGISTRATION ERROR:",
-                error.response?.data ||
-                error.message
+                "PROFILE ERROR:",
+                error
             );
 
-
-            const serverMessage =
-                error.response?.data?.message;
-
-
-            Alert.alert(
-                "Registration Error",
-                serverMessage ||
-                "Unable to connect to the server. Please try again."
+            setErrorMessage(
+                "Unable to continue. Please try again."
             );
 
         } finally {
 
             setLoading(false);
+
         }
+
     };
 
 
+    // =====================================================
+    // ERROR MESSAGE
+    // =====================================================
+
+    const [
+        errorMessage,
+        setErrorMessage
+    ] = useState("");
+
+
+    // =====================================================
+    // INPUT HELPER
+    // =====================================================
+
+    const clearError = () => {
+
+        if (errorMessage) {
+            setErrorMessage("");
+        }
+
+    };
+
+
+    // =====================================================
+    // UI
+    // =====================================================
+
     return (
 
-        <ScrollView
-            style={styles.container}
-
-            contentContainerStyle={
-                styles.contentContainer
-            }
-
-            showsVerticalScrollIndicator={false}
-        >
-
-            {/* =================================================
-                HEADER
-            ================================================= */}
-
-            <View style={styles.header}>
-
-                <Text style={styles.title}>
-                    Create Profile
-                </Text>
-
-                <Text style={styles.subtitle}>
-                    Join Saath Groww as a delivery partner
-                </Text>
-
-            </View>
-
-
-            {/* =================================================
-                PERSONAL DETAILS
-            ================================================= */}
-
-            <Text style={styles.sectionTitle}>
-                Personal Details
-            </Text>
-
-
-            <TextInput
-                placeholder="Full Name *"
-
-                placeholderTextColor="#999"
-
-                value={fullName}
-
-                onChangeText={setFullName}
-
-                style={styles.input}
-
-                autoCapitalize="words"
-            />
-
-
-            <TextInput
-                placeholder="Gmail Address *"
-
-                placeholderTextColor="#999"
-
-                value={email}
-
-                onChangeText={setEmail}
-
-                style={styles.input}
-
-                keyboardType="email-address"
-
-                autoCapitalize="none"
-
-                autoCorrect={false}
-            />
-
-
-            <TextInput
-                placeholder="Mobile Number *"
-
-                placeholderTextColor="#999"
-
-                value={mobile}
-
-                onChangeText={setMobile}
-
-                style={styles.input}
-
-                keyboardType="number-pad"
-
-                maxLength={10}
-            />
-
-
-            {/* =================================================
-                ADDRESS
-            ================================================= */}
-
-            <Text style={styles.sectionTitle}>
-                Address Details
-            </Text>
-
-
-            <TextInput
-                placeholder="Address Line 1 *"
-
-                placeholderTextColor="#999"
-
-                value={address}
-
-                onChangeText={setAddress}
-
-                style={[
-                    styles.input,
-                    styles.multilineInput,
-                ]}
-
-                multiline
-
-                textAlignVertical="top"
-            />
-
-
-            <TextInput
-                placeholder="City *"
-
-                placeholderTextColor="#999"
-
-                value={city}
-
-                onChangeText={setCity}
-
-                style={styles.input}
-
-                autoCapitalize="words"
-            />
-
-
-            <TextInput
-                placeholder="State *"
-
-                placeholderTextColor="#999"
-
-                value={state}
-
-                onChangeText={setStateValue}
-
-                style={styles.input}
-
-                autoCapitalize="words"
-            />
-
-
-            <TextInput
-                placeholder="Pincode *"
-
-                placeholderTextColor="#999"
-
-                value={pincode}
-
-                onChangeText={setPincode}
-
-                keyboardType="number-pad"
-
-                maxLength={6}
-
-                style={styles.input}
-            />
-
-
-            {/* =================================================
-                VEHICLE DETAILS
-            ================================================= */}
-
-            <Text style={styles.sectionTitle}>
-                Vehicle Details
-            </Text>
-
-
-            <TextInput
-                placeholder="Vehicle Type *"
-
-                placeholderTextColor="#999"
-
-                value={vehicleType}
-
-                onChangeText={setVehicleType}
-
-                style={styles.input}
-
-                autoCapitalize="words"
-            />
-
-
-            <TextInput
-                placeholder="Vehicle Number *"
-
-                placeholderTextColor="#999"
-
-                value={vehicleNumber}
-
-                onChangeText={setVehicleNumber}
-
-                style={styles.input}
-
-                autoCapitalize="characters"
-            />
-
-
-            {/* =================================================
-                REFERRAL
-            ================================================= */}
-
-            <TextInput
-                placeholder="Referral Code (Optional)"
-
-                placeholderTextColor="#999"
-
-                value={referralCode}
-
-                onChangeText={setReferralCode}
-
-                style={styles.input}
-
-                autoCapitalize="characters"
-            />
-
-
-            {/* =================================================
-                CONTINUE BUTTON
-            ================================================= */}
-
-            <TouchableOpacity
-
-                style={[
-                    styles.button,
-
-                    loading &&
-                    styles.buttonDisabled,
-                ]}
-
-                onPress={handleContinue}
-
-                disabled={loading}
+        <View style={styles.screen}>
+
+            <ScrollView
+                style={styles.container}
+                contentContainerStyle={
+                    styles.contentContainer
+                }
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
             >
 
-                {loading ? (
+                {/* =================================================
+                    PROGRESS
+                ================================================= */}
 
-                    <ActivityIndicator
-                        color="#FFFFFF"
-                    />
+                <View style={styles.progressContainer}>
 
-                ) : (
+                    <View style={styles.progressStepActive}>
+                        <Text style={styles.progressNumber}>
+                            1
+                        </Text>
+                    </View>
 
-                    <Text style={styles.buttonText}>
-                        Register & Continue
+                    <View style={styles.progressLine} />
+
+                    <View style={styles.progressStep}>
+                        <Text style={styles.progressNumberInactive}>
+                            2
+                        </Text>
+                    </View>
+
+                    <View style={styles.progressLine} />
+
+                    <View style={styles.progressStep}>
+                        <Text style={styles.progressNumberInactive}>
+                            3
+                        </Text>
+                    </View>
+
+                </View>
+
+
+                <View style={styles.progressLabels}>
+
+                    <Text style={styles.progressLabelActive}>
+                        Profile
                     </Text>
 
-                )}
+                    <Text style={styles.progressLabel}>
+                        Documents
+                    </Text>
 
-            </TouchableOpacity>
+                    <Text style={styles.progressLabel}>
+                        Verification
+                    </Text>
+
+                </View>
 
 
-            {/* =================================================
-                LOGIN
-            ================================================= */}
+                {/* =================================================
+                    HEADER
+                ================================================= */}
 
-            <TouchableOpacity
-                style={styles.loginLinkContainer}
+                <View style={styles.header}>
 
-                onPress={() =>
-                    navigation.replace("Login")
-                }
+                    <View style={styles.iconCircle}>
 
-                disabled={loading}
-            >
+                        <Text style={styles.icon}>
+                            👤
+                        </Text>
 
-                <Text style={styles.loginText}>
-                    Already have an account?
+                    </View>
+
+
+                    <Text style={styles.title}>
+                        Create Your Profile
+                    </Text>
+
+
+                    <Text style={styles.subtitle}>
+                        Tell us a little about yourself
+                        to complete your delivery partner profile.
+                    </Text>
+
+                </View>
+
+
+                {/* =================================================
+                    ERROR
+                ================================================= */}
+
+                {errorMessage ? (
+
+                    <View style={styles.errorBox}>
+
+                        <Text style={styles.errorIcon}>
+                            !
+                        </Text>
+
+                        <Text style={styles.errorText}>
+                            {errorMessage}
+                        </Text>
+
+                    </View>
+
+                ) : null}
+
+
+                {/* =================================================
+                    PERSONAL DETAILS
+                ================================================= */}
+
+                <View style={styles.sectionHeader}>
+
+                    <View style={styles.sectionIcon}>
+                        <Text>👤</Text>
+                    </View>
+
+                    <View>
+
+                        <Text style={styles.sectionTitle}>
+                            Personal Details
+                        </Text>
+
+                        <Text style={styles.sectionSubtitle}>
+                            Your basic information
+                        </Text>
+
+                    </View>
+
+                </View>
+
+
+                <Text style={styles.fieldLabel}>
+                    Full Name
                 </Text>
 
-                <Text style={styles.loginLink}>
-                    Login
+                <TextInput
+                    placeholder="Enter your full name"
+                    placeholderTextColor="#9A9A9A"
+                    value={fullName}
+                    onChangeText={(value) => {
+                        setFullName(value);
+                        clearError();
+                    }}
+                    style={styles.input}
+                    autoCapitalize="words"
+                />
+
+
+                <Text style={styles.fieldLabel}>
+                    Email Address
                 </Text>
 
-            </TouchableOpacity>
+                <TextInput
+                    placeholder="Your registered email"
+                    placeholderTextColor="#9A9A9A"
+                    value={email}
+                    editable={false}
+                    style={[
+                        styles.input,
+                        styles.disabledInput,
+                    ]}
+                    keyboardType="email-address"
+                />
 
 
-            <View
-                style={{
-                    height: 40,
-                }}
-            />
+                <Text style={styles.fieldLabel}>
+                    Mobile Number
+                </Text>
 
-        </ScrollView>
+                <TextInput
+                    placeholder="Enter 10-digit mobile number"
+                    placeholderTextColor="#9A9A9A"
+                    value={mobile}
+                    onChangeText={(value) => {
+                        setMobile(value);
+                        clearError();
+                    }}
+                    style={styles.input}
+                    keyboardType="number-pad"
+                    maxLength={10}
+                />
+
+
+                {/* =================================================
+                    ADDRESS
+                ================================================= */}
+
+                <View style={styles.sectionHeader}>
+
+                    <View style={styles.sectionIcon}>
+                        <Text>📍</Text>
+                    </View>
+
+                    <View>
+
+                        <Text style={styles.sectionTitle}>
+                            Address Details
+                        </Text>
+
+                        <Text style={styles.sectionSubtitle}>
+                            Where you are based
+                        </Text>
+
+                    </View>
+
+                </View>
+
+
+                <Text style={styles.fieldLabel}>
+                    Address
+                </Text>
+
+                <TextInput
+                    placeholder="Enter your complete address"
+                    placeholderTextColor="#9A9A9A"
+                    value={address}
+                    onChangeText={(value) => {
+                        setAddress(value);
+                        clearError();
+                    }}
+                    style={[
+                        styles.input,
+                        styles.multilineInput,
+                    ]}
+                    multiline
+                    textAlignVertical="top"
+                />
+
+
+                <View style={styles.row}>
+
+                    <View style={styles.halfInputContainer}>
+
+                        <Text style={styles.fieldLabel}>
+                            City
+                        </Text>
+
+                        <TextInput
+                            placeholder="City"
+                            placeholderTextColor="#9A9A9A"
+                            value={city}
+                            onChangeText={(value) => {
+                                setCity(value);
+                                clearError();
+                            }}
+                            style={styles.input}
+                            autoCapitalize="words"
+                        />
+
+                    </View>
+
+
+                    <View style={styles.halfInputContainer}>
+
+                        <Text style={styles.fieldLabel}>
+                            Pincode
+                        </Text>
+
+                        <TextInput
+                            placeholder="Pincode"
+                            placeholderTextColor="#9A9A9A"
+                            value={pincode}
+                            onChangeText={(value) => {
+                                setPincode(value);
+                                clearError();
+                            }}
+                            style={styles.input}
+                            keyboardType="number-pad"
+                            maxLength={6}
+                        />
+
+                    </View>
+
+                </View>
+
+
+                <Text style={styles.fieldLabel}>
+                    State
+                </Text>
+
+                <TextInput
+                    placeholder="Enter your state"
+                    placeholderTextColor="#9A9A9A"
+                    value={state}
+                    onChangeText={(value) => {
+                        setStateValue(value);
+                        clearError();
+                    }}
+                    style={styles.input}
+                    autoCapitalize="words"
+                />
+
+
+                {/* =================================================
+                    VEHICLE DETAILS
+                ================================================= */}
+
+                <View style={styles.sectionHeader}>
+
+                    <View style={styles.sectionIcon}>
+                        <Text>🏍️</Text>
+                    </View>
+
+                    <View>
+
+                        <Text style={styles.sectionTitle}>
+                            Vehicle Details
+                        </Text>
+
+                        <Text style={styles.sectionSubtitle}>
+                            Information about your vehicle
+                        </Text>
+
+                    </View>
+
+                </View>
+
+
+                <Text style={styles.fieldLabel}>
+                    Vehicle Type
+                </Text>
+
+                <TextInput
+                    placeholder="e.g. Bike, Scooter, EV"
+                    placeholderTextColor="#9A9A9A"
+                    value={vehicleType}
+                    onChangeText={(value) => {
+                        setVehicleType(value);
+                        clearError();
+                    }}
+                    style={styles.input}
+                    autoCapitalize="words"
+                />
+
+
+                <Text style={styles.fieldLabel}>
+                    Vehicle Number
+                </Text>
+
+                <TextInput
+                    placeholder="e.g. TS09AB1234"
+                    placeholderTextColor="#9A9A9A"
+                    value={vehicleNumber}
+                    onChangeText={(value) => {
+                        setVehicleNumber(value);
+                        clearError();
+                    }}
+                    style={styles.input}
+                    autoCapitalize="characters"
+                />
+
+
+                {/* =================================================
+                    REFERRAL
+                ================================================= */}
+
+                <Text style={styles.fieldLabel}>
+                    Referral Code
+                    <Text style={styles.optional}>
+                        {"  "}Optional
+                    </Text>
+                </Text>
+
+                <TextInput
+                    placeholder="Enter referral code if you have one"
+                    placeholderTextColor="#9A9A9A"
+                    value={referralCode}
+                    onChangeText={setReferralCode}
+                    style={styles.input}
+                    autoCapitalize="characters"
+                />
+
+
+                {/* =================================================
+                    INFO BOX
+                ================================================= */}
+
+                <View style={styles.infoBox}>
+
+                    <Text style={styles.infoIcon}>
+                        ✓
+                    </Text>
+
+                    <Text style={styles.infoText}>
+                        Make sure your details match the
+                        information on your official documents.
+                    </Text>
+
+                </View>
+
+
+                {/* =================================================
+                    CONTINUE
+                ================================================= */}
+
+                <TouchableOpacity
+                    style={[
+                        styles.continueButton,
+                        loading &&
+                        styles.buttonDisabled,
+                    ]}
+                    onPress={handleContinue}
+                    disabled={loading}
+                    activeOpacity={0.85}
+                >
+
+                    {loading ? (
+
+                        <ActivityIndicator
+                            color="#FFFFFF"
+                        />
+
+                    ) : (
+
+                        <>
+
+                            <Text style={styles.continueText}>
+                                Continue
+                            </Text>
+
+                            <Text style={styles.arrow}>
+                                →
+                            </Text>
+
+                        </>
+
+                    )}
+
+                </TouchableOpacity>
+
+
+                <Text style={styles.bottomText}>
+                    Next: Upload your verification documents
+                </Text>
+
+
+                <View style={styles.bottomSpace} />
+
+            </ScrollView>
+
+        </View>
+
     );
+
 }
 
 
-// ===========================================================
+// =========================================================
 // STYLES
-// ===========================================================
+// =========================================================
 
 const styles = StyleSheet.create({
 
+    screen: {
+        flex: 1,
+        backgroundColor: "#F7FBF8",
+    },
+
     container: {
         flex: 1,
+    },
 
-        backgroundColor: "#FFFDFF",
+    contentContainer: {
+        paddingHorizontal: 20,
+        paddingTop: 25,
+        paddingBottom: 50,
+    },
 
+
+    // =====================================================
+    // PROGRESS
+    // =====================================================
+
+    progressContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 5,
+    },
+
+    progressStepActive: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: "#1DAB52",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+
+    progressStep: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: "#E6EEE9",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+
+    progressNumber: {
+        color: "#FFFFFF",
+        fontWeight: "800",
+    },
+
+    progressNumberInactive: {
+        color: "#89968E",
+        fontWeight: "700",
+    },
+
+    progressLine: {
+        height: 2,
+        width: 65,
+        backgroundColor: "#DCE7E0",
+    },
+
+    progressLabels: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        paddingHorizontal: 25,
+        marginTop: 7,
+        marginBottom: 25,
+    },
+
+    progressLabelActive: {
+        fontSize: 11,
+        fontWeight: "700",
+        color: "#1DAB52",
+    },
+
+    progressLabel: {
+        fontSize: 11,
+        color: "#89968E",
+    },
+
+
+    // =====================================================
+    // HEADER
+    // =====================================================
+
+    header: {
+        alignItems: "center",
+        marginBottom: 25,
+    },
+
+    iconCircle: {
+        width: 62,
+        height: 62,
+        borderRadius: 31,
+        backgroundColor: "#E8F8EF",
+        borderWidth: 1,
+        borderColor: "#B9E8CB",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 12,
+    },
+
+    icon: {
+        fontSize: 27,
+    },
+
+    title: {
+        fontSize: 28,
+        fontWeight: "800",
+        color: "#17221B",
+        textAlign: "center",
+    },
+
+    subtitle: {
+        fontSize: 13,
+        color: "#6E7972",
+        textAlign: "center",
+        lineHeight: 20,
+        marginTop: 7,
         paddingHorizontal: 20,
     },
 
 
-    contentContainer: {
-        paddingBottom: 40,
-    },
+    // =====================================================
+    // ERROR
+    // =====================================================
 
-
-    header: {
-        marginTop: 55,
-
-        marginBottom: 25,
-
+    errorBox: {
+        flexDirection: "row",
         alignItems: "center",
+        backgroundColor: "#FFF1F1",
+        borderWidth: 1,
+        borderColor: "#F2C5C5",
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 18,
     },
 
-
-    title: {
-        fontSize: 30,
-
-        fontWeight: "800",
-
-        color: "#1DAB52",
-    },
-
-
-    subtitle: {
-        marginTop: 8,
-
-        fontSize: 14,
-
-        color: "#666",
-
+    errorIcon: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: "#D93025",
+        color: "#FFFFFF",
         textAlign: "center",
+        lineHeight: 22,
+        fontWeight: "800",
+        marginRight: 9,
     },
 
+    errorText: {
+        flex: 1,
+        color: "#C62828",
+        fontSize: 13,
+        lineHeight: 18,
+    },
+
+
+    // =====================================================
+    // SECTION
+    // =====================================================
+
+    sectionHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 15,
+        marginBottom: 15,
+    },
+
+    sectionIcon: {
+        width: 38,
+        height: 38,
+        borderRadius: 11,
+        backgroundColor: "#E8F8EF",
+        justifyContent: "center",
+        alignItems: "center",
+        marginRight: 11,
+    },
 
     sectionTitle: {
-        fontSize: 18,
-
-        fontWeight: "700",
-
-        color: "#222",
-
-        marginTop: 15,
-
-        marginBottom: 12,
+        fontSize: 17,
+        fontWeight: "800",
+        color: "#202923",
     },
 
+    sectionSubtitle: {
+        fontSize: 11,
+        color: "#8A938D",
+        marginTop: 2,
+    },
+
+
+    // =====================================================
+    // INPUT
+    // =====================================================
+
+    fieldLabel: {
+        fontSize: 13,
+        fontWeight: "700",
+        color: "#39433D",
+        marginBottom: 7,
+    },
+
+    optional: {
+        color: "#9AA39E",
+        fontWeight: "500",
+    },
 
     input: {
+        height: 54,
         backgroundColor: "#FFFFFF",
-
         borderWidth: 1,
-
-        borderColor: "#E1E1E1",
-
-        borderRadius: 14,
-
-        paddingHorizontal: 16,
-
-        height: 56,
-
+        borderColor: "#D9E4DD",
+        borderRadius: 13,
+        paddingHorizontal: 15,
+        fontSize: 15,
+        color: "#202522",
         marginBottom: 15,
-
-        fontSize: 16,
-
-        color: "#222",
     },
 
+    disabledInput: {
+        backgroundColor: "#F0F4F1",
+        color: "#7D8780",
+        borderColor: "#E1E7E3",
+    },
 
     multilineInput: {
         height: 90,
+        paddingTop: 14,
+    },
 
-        paddingTop: 15,
+    row: {
+        flexDirection: "row",
+        gap: 12,
+    },
+
+    halfInputContainer: {
+        flex: 1,
     },
 
 
-    button: {
-        marginTop: 15,
+    // =====================================================
+    // INFO
+    // =====================================================
 
-        backgroundColor: "#1DAB52",
-
-        height: 58,
-
-        borderRadius: 14,
-
-        justifyContent: "center",
-
+    infoBox: {
+        flexDirection: "row",
         alignItems: "center",
-
-        elevation: 3,
+        backgroundColor: "#EEF8F2",
+        borderRadius: 12,
+        padding: 13,
+        marginTop: 5,
+        marginBottom: 20,
     },
 
+    infoIcon: {
+        width: 23,
+        height: 23,
+        borderRadius: 12,
+        backgroundColor: "#1DAB52",
+        color: "#FFFFFF",
+        textAlign: "center",
+        lineHeight: 23,
+        fontWeight: "800",
+        marginRight: 9,
+    },
+
+    infoText: {
+        flex: 1,
+        color: "#506058",
+        fontSize: 12,
+        lineHeight: 18,
+    },
+
+
+    // =====================================================
+    // BUTTON
+    // =====================================================
+
+    continueButton: {
+        height: 58,
+        backgroundColor: "#1DAB52",
+        borderRadius: 15,
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        elevation: 3,
+        shadowOpacity: 0.08,
+        shadowRadius: 5,
+        shadowOffset: {
+            width: 0,
+            height: 3,
+        },
+    },
 
     buttonDisabled: {
-        opacity: 0.7,
+        opacity: 0.65,
     },
 
-
-    buttonText: {
+    continueText: {
         color: "#FFFFFF",
-
-        fontWeight: "700",
-
         fontSize: 17,
-    },
-
-
-    loginLinkContainer: {
-        flexDirection: "row",
-
-        justifyContent: "center",
-
-        marginTop: 25,
-    },
-
-
-    loginText: {
-        color: "#666",
-
-        fontSize: 14,
-    },
-
-
-    loginLink: {
-        color: "#1DAB52",
-
-        fontSize: 14,
-
         fontWeight: "800",
+    },
 
-        marginLeft: 5,
+    arrow: {
+        color: "#FFFFFF",
+        fontSize: 24,
+        marginLeft: 12,
+        marginTop: -2,
+    },
+
+    bottomText: {
+        textAlign: "center",
+        color: "#89948D",
+        fontSize: 12,
+        marginTop: 12,
+    },
+
+    bottomSpace: {
+        height: 20,
     },
 
 });
