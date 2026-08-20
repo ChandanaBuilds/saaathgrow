@@ -1,4 +1,6 @@
+
 import React, { useState } from "react";
+
 import {
     View,
     Text,
@@ -7,260 +9,519 @@ import {
     StyleSheet,
     StatusBar,
     Alert,
-    Image
+    Image,
+    ActivityIndicator,
 } from "react-native";
+
 import { useNavigation } from "@react-navigation/native";
+
 import axios from "axios";
 
 
+const API_URL =
+    "https://saaathgrow.onrender.com";
+
 
 export default function LoginScreen() {
-    const [mobile, setMobile] = useState("");
+
     const navigation = useNavigation<any>();
 
-    const handleSendOTP = async () => {
-        console.log("=================================");
-        console.log("SEND OTP BUTTON CLICKED");
-        console.log("Mobile:", mobile);
-        console.log("=================================");
+    const [email, setEmail] = useState("");
 
-        if (mobile.length !== 10) {
+    const [loading, setLoading] = useState(false);
+
+
+    // =====================================================
+    // EMAIL VALIDATION
+    // =====================================================
+
+    const isValidEmail = (
+        emailAddress: string
+    ) => {
+
+        const emailRegex =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        return emailRegex.test(
+            emailAddress.trim()
+        );
+    };
+
+
+    // =====================================================
+    // EXISTING USER LOGIN
+    // =====================================================
+
+    const handleLogin = async () => {
+
+        const cleanEmail =
+            email.trim().toLowerCase();
+
+
+        // Empty email
+        if (!cleanEmail) {
+
             Alert.alert(
-                "Invalid Number",
-                "Please enter a valid 10 digit mobile number."
+                "Email Required",
+                "Please enter your Gmail address."
             );
+
             return;
         }
 
+
+        // Invalid email
+        if (!isValidEmail(cleanEmail)) {
+
+            Alert.alert(
+                "Invalid Gmail",
+                "Please enter a valid Gmail address."
+            );
+
+            return;
+        }
+
+
         try {
-            console.log("Calling backend...");
+
+            setLoading(true);
+
 
             const response = await axios.post(
-                "https://saaathgrow.onrender.com/auth/send-otp",
+
+                `${API_URL}/auth/login/send-otp`,
+
+                null,
+
                 {
-                    phone_number: mobile,
-                },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
+                    params: {
+                        email: cleanEmail,
                     },
+
                     timeout: 30000,
                 }
             );
 
-            console.log("STATUS:", response.status);
-            console.log("DATA:", response.data);
 
-            if (response.data.success === false) {
+            const data =
+                response.data;
+
+
+            console.log(
+                "LOGIN OTP RESPONSE:",
+                data
+            );
+
+
+            if (!data.success) {
+
                 Alert.alert(
-                    "OTP Failed",
-                    response.data.message || "Unable to send OTP"
+                    "Login Failed",
+                    data.message ||
+                    "Unable to send OTP."
                 );
+
                 return;
             }
 
+
             Alert.alert(
-                "Success",
-                "OTP sent successfully"
+                "OTP Sent",
+                "A login OTP has been sent to your email."
             );
 
-            navigation.navigate("Otp", {
-                mobile: mobile,
-            });
+
+            navigation.navigate(
+                "EmailOTP",
+                {
+                    email: cleanEmail,
+
+                    purpose: "login",
+                }
+            );
+
 
         } catch (error: any) {
-            console.log("========== OTP ERROR ==========");
-            console.log("MESSAGE:", error.message);
-            console.log("CODE:", error.code);
-            console.log("STATUS:", error.response?.status);
-            console.log("DATA:", error.response?.data);
-            console.log("===============================");
+
+            console.log(
+                "LOGIN ERROR:",
+                error.response?.data ||
+                error.message
+            );
+
 
             Alert.alert(
-                "OTP Error",
+                "Login Error",
                 error.response?.data?.message ||
-                error.message ||
-                "Failed to send OTP"
+                "Unable to connect to the server. Please try again."
             );
+
+        } finally {
+
+            setLoading(false);
         }
     };
 
+
+    // =====================================================
+    // REGISTER
+    // =====================================================
+
+    const handleRegister = () => {
+
+        navigation.navigate(
+            "CreateProfile"
+        );
+    };
+
+
     return (
+
         <View style={styles.container}>
+
             <StatusBar
                 backgroundColor="#FFFDFF"
                 barStyle="dark-content"
             />
 
+
+            {/* =================================================
+                LOGO
+            ================================================= */}
+
             <Image
-                source={require("../../assets/logo.jpeg")}
+                source={
+                    require("../../assets/logo.jpeg")
+                }
+
                 style={styles.logo}
+
+                resizeMode="contain"
             />
 
-            {/* App Name */}
-            <Text style={styles.appName}>Saath Groww</Text>
 
-            {/* Tagline */}
+            {/* =================================================
+                APP NAME
+            ================================================= */}
+
+            <Text style={styles.appName}>
+                Saath Groww
+            </Text>
+
+
             <Text style={styles.tagline}>
                 Groww together, earn together
             </Text>
 
-            {/* Section Title */}
+
+            {/* =================================================
+                LOGIN TITLE
+            ================================================= */}
+
             <Text style={styles.heading}>
-                Sign in or Register
+                Welcome Back
             </Text>
+
 
             <Text style={styles.subHeading}>
-                Enter your mobile number to continue
+                Login using your registered Gmail address
             </Text>
 
-            {/* Mobile Input */}
+
+            {/* =================================================
+                EMAIL INPUT
+            ================================================= */}
+
             <View style={styles.inputContainer}>
-                <Text style={styles.countryCode}>+91</Text>
+
+                <Text style={styles.emailIcon}>
+                    ✉
+                </Text>
+
 
                 <TextInput
-                    placeholder="Mobile Number"
+                    placeholder="Enter Gmail address"
+
                     placeholderTextColor="#999"
-                    value={mobile}
-                    onChangeText={setMobile}
-                    keyboardType="number-pad"
-                    maxLength={10}
+
+                    value={email}
+
+                    onChangeText={setEmail}
+
+                    keyboardType="email-address"
+
+                    autoCapitalize="none"
+
+                    autoCorrect={false}
+
                     style={styles.input}
                 />
+
             </View>
 
-            {/* Send OTP Button */}
+
+            {/* =================================================
+                LOGIN BUTTON
+            ================================================= */}
+
             <TouchableOpacity
-                style={styles.button}
-                onPress={handleSendOTP}
+                style={[
+                    styles.button,
+
+                    loading &&
+                    styles.buttonDisabled
+                ]}
+
+                onPress={handleLogin}
+
+                disabled={loading}
             >
-                <Text style={styles.buttonText}>
-                    Send OTP
-                </Text>
+
+                {loading ? (
+
+                    <ActivityIndicator
+                        color="#FFFFFF"
+                    />
+
+                ) : (
+
+                    <Text style={styles.buttonText}>
+                        Continue with Email
+                    </Text>
+                )}
+
             </TouchableOpacity>
 
-            {/* Footer Text */}
+
+            {/* =================================================
+                REGISTER SECTION
+            ================================================= */}
+
+            <View style={styles.registerContainer}>
+
+                <Text style={styles.registerText}>
+                    New to Saath Groww?
+                </Text>
+
+
+                <TouchableOpacity
+                    onPress={handleRegister}
+                    disabled={loading}
+                >
+
+                    <Text style={styles.registerLink}>
+                        Register
+                    </Text>
+
+                </TouchableOpacity>
+
+            </View>
+
+
+            {/* =================================================
+                FOOTER
+            ================================================= */}
+
             <Text style={styles.footerText}>
-                New to Saath Groww?
+                Secure login with email verification
             </Text>
 
-            <Text style={styles.footerSubText}>
-                Your account will be created automatically
-                after OTP verification.
-            </Text>
         </View>
     );
 }
 
+
 const styles = StyleSheet.create({
+
     container: {
         flex: 1,
+
         backgroundColor: "#FFFDFF",
+
         paddingHorizontal: 25,
+
         justifyContent: "center",
     },
 
 
-
     logo: {
         width: 110,
+
         height: 110,
+
         resizeMode: "contain",
+
         alignSelf: "center",
-        marginBottom: 25,
+
+        marginBottom: 20,
     },
 
 
     appName: {
         fontSize: 34,
+
         fontWeight: "800",
+
         color: "#1DAB52",
+
         textAlign: "center",
     },
+
 
     tagline: {
         fontSize: 15,
+
         color: "#78C4D8",
+
         textAlign: "center",
+
         marginTop: 6,
-        marginBottom: 40,
-    },
 
-    heading: {
-        fontSize: 26,
-        fontWeight: "700",
-        color: "#222",
-        textAlign: "center",
-    },
-
-    subHeading: {
-        fontSize: 15,
-        color: "#777",
-        textAlign: "center",
-        marginTop: 10,
         marginBottom: 35,
     },
 
+
+    heading: {
+        fontSize: 27,
+
+        fontWeight: "700",
+
+        color: "#222",
+
+        textAlign: "center",
+    },
+
+
+    subHeading: {
+        fontSize: 14,
+
+        color: "#777",
+
+        textAlign: "center",
+
+        marginTop: 10,
+
+        marginBottom: 30,
+    },
+
+
     inputContainer: {
         flexDirection: "row",
+
         alignItems: "center",
+
         borderWidth: 1.5,
+
         borderColor: "#78C4D8",
+
         borderRadius: 14,
+
         paddingHorizontal: 15,
+
         height: 58,
+
         backgroundColor: "#FFFFFF",
+
         marginBottom: 20,
     },
 
-    countryCode: {
-        fontSize: 16,
-        fontWeight: "600",
+
+    emailIcon: {
+        fontSize: 20,
+
         color: "#1DAB52",
+
         marginRight: 10,
     },
 
+
     input: {
         flex: 1,
+
         fontSize: 16,
+
         color: "#222",
     },
 
+
     button: {
         backgroundColor: "#1DAB52",
+
         height: 58,
+
         borderRadius: 14,
+
         justifyContent: "center",
+
         alignItems: "center",
+
         elevation: 3,
+
         shadowColor: "#1DAB52",
+
         shadowOpacity: 0.25,
+
         shadowRadius: 8,
+
         shadowOffset: {
             width: 0,
+
             height: 4,
         },
     },
 
+
+    buttonDisabled: {
+        opacity: 0.7,
+    },
+
+
     buttonText: {
         color: "#FFFDFF",
+
         fontSize: 17,
+
         fontWeight: "700",
     },
 
-    footerText: {
-        textAlign: "center",
-        marginTop: 35,
-        fontSize: 15,
-        color: "#1DAB52",
-        fontWeight: "600",
+
+    registerContainer: {
+        flexDirection: "row",
+
+        justifyContent: "center",
+
+        alignItems: "center",
+
+        marginTop: 30,
     },
 
-    footerSubText: {
-        textAlign: "center",
-        marginTop: 6,
-        fontSize: 13,
-        color: "#777",
-        lineHeight: 20,
+
+    registerText: {
+        color: "#666",
+
+        fontSize: 15,
     },
+
+
+    registerLink: {
+        color: "#1DAB52",
+
+        fontSize: 15,
+
+        fontWeight: "800",
+
+        marginLeft: 6,
+    },
+
+
+    footerText: {
+        textAlign: "center",
+
+        marginTop: 35,
+
+        fontSize: 12,
+
+        color: "#999",
+    },
+
 });
