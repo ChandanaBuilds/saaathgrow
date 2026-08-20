@@ -20,6 +20,9 @@ import SplashScreen
 import LoginScreen
   from "./src/screens/LoginScreen";
 
+import RegisterScreen
+  from "./src/screens/RegisterScreen";
+
 import OtpScreen
   from "./src/screens/OtpScreen";
 
@@ -81,32 +84,28 @@ export default function App() {
 
 
         {/* =================================================
-                    AUTHENTICATION
-                ================================================= */}
+    AUTHENTICATION
+================================================= */}
 
         <Stack.Screen
           name="Login"
           component={LoginScreen}
         />
 
-
-        {/* Old phone OTP screen.
-                    Kept temporarily so existing imports
-                    do not break. */}
+        <Stack.Screen
+          name="Register"
+          component={RegisterScreen}
+        />
 
         <Stack.Screen
           name="Otp"
           component={OtpScreen}
         />
 
-
-        {/* New email OTP */}
-
         <Stack.Screen
           name="EmailOTP"
           component={EmailOTPScreen}
         />
-
 
         {/* =================================================
                     REGISTRATION

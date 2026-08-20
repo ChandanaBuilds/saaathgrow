@@ -169,9 +169,7 @@ export default function LoginScreen() {
 
     const handleRegister = () => {
 
-        navigation.navigate(
-            "CreateProfile"
-        );
+        navigation.navigate("Register");
     };
 
 

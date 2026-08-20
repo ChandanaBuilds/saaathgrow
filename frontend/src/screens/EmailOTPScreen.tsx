@@ -108,7 +108,7 @@ export default function EmailOTPScreen({
                 response =
                     await axios.post(
 
-                        `${API_URL} /auth/verify - registration - otp`,
+                        `${API_URL}/auth/verify-registration-otp`,
 
                         null,
 
@@ -134,7 +134,7 @@ export default function EmailOTPScreen({
                 response =
                     await axios.post(
 
-                        `${API_URL} /auth/login / verify - otp`,
+                        `${API_URL}/auth/login/verify-otp`,
 
                         null,
 
