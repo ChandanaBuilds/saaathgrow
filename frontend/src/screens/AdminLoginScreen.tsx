@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
     View,
     Text,
@@ -12,301 +13,836 @@ import {
     ScrollView,
 } from "react-native";
 
-export default function AdminLoginScreen({ navigation }: any) {
+
+/*
+=========================================================
+BACKEND URL
+=========================================================
+*/
+
+const API_URL =
+    "https://saaathgroww.onrender.com";
+
+
+export default function AdminLoginScreen({
+    navigation,
+}: any) {
+
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
+
+    const [password, setPassword] =
+        useState("");
+
+    const [loading, setLoading] =
+        useState(false);
+
+    const [showPassword, setShowPassword] =
+        useState(false);
+
+
+    /*
+    =====================================================
+    ADMIN LOGIN
+    =====================================================
+    */
 
     const handleLogin = async () => {
+
+        // -----------------------------------------------
+        // Validate email
+        // -----------------------------------------------
+
         if (!email.trim()) {
-            Alert.alert("Required", "Please enter admin email.");
+
+            Alert.alert(
+                "Required",
+                "Please enter admin email."
+            );
+
             return;
         }
+
+
+        // -----------------------------------------------
+        // Validate password
+        // -----------------------------------------------
 
         if (!password.trim()) {
-            Alert.alert("Required", "Please enter admin password.");
+
+            Alert.alert(
+                "Required",
+                "Please enter admin password."
+            );
+
             return;
         }
 
+
         try {
+
             setLoading(true);
 
-            // We will connect this to your FastAPI endpoint
+
+            console.log(
+                "ADMIN LOGIN REQUEST"
+            );
+
+            console.log(
+                "URL:",
+                `${API_URL}/admin/login`
+            );
+
+
+            // -------------------------------------------
+            // API REQUEST
+            // -------------------------------------------
+
             const response = await fetch(
-                "https://saaathgroww.onrender.com/admin/login",
+
+                `${API_URL}/admin/login`,
+
                 {
                     method: "POST",
+
                     headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
+
+                        "Content-Type":
+                            "application/json",
+
+                        "Accept":
+                            "application/json",
+
                     },
+
                     body: JSON.stringify({
-                        email: email.trim(),
-                        password: password,
+
+                        email:
+                            email.trim(),
+
+                        password:
+                            password,
+
                     }),
+
                 }
+
             );
 
-            const data = await response.json();
+
+            console.log(
+                "ADMIN LOGIN STATUS:",
+                response.status
+            );
+
+
+            // -------------------------------------------
+            // Read response safely
+            // -------------------------------------------
+
+            const responseText =
+                await response.text();
+
+
+            console.log(
+                "ADMIN LOGIN RAW RESPONSE:",
+                responseText
+            );
+
+
+            let data: any = null;
+
+
+            try {
+
+                data =
+                    responseText
+                        ? JSON.parse(responseText)
+                        : null;
+
+            } catch (jsonError) {
+
+                console.log(
+                    "Response was not JSON:",
+                    jsonError
+                );
+
+            }
+
+
+            // -------------------------------------------
+            // API ERROR
+            // -------------------------------------------
 
             if (!response.ok) {
-                throw new Error(
+
+                const errorMessage =
+
                     data?.detail ||
+
                     data?.message ||
-                    "Invalid admin credentials."
+
+                    `Login failed. Server returned ${response.status}.`;
+
+
+                throw new Error(
+                    errorMessage
                 );
+
             }
 
-            console.log("ADMIN LOGIN RESPONSE:", data);
 
-            Alert.alert(
-                "Login Successful",
-                "Welcome to Saath Groww Admin Panel."
+            // -------------------------------------------
+            // SUCCESS
+            // -------------------------------------------
+
+            console.log(
+                "ADMIN LOGIN SUCCESS:",
+                data
             );
 
-            // Dashboard will be connected here
-            // navigation.replace("AdminDashboard");
+
+            Alert.alert(
+
+                "Login Successful",
+
+                "Welcome to Saath Groww Admin Panel.",
+
+                [
+
+                    {
+                        text: "Continue",
+
+                        onPress: () => {
+
+                            /*
+                            =================================================
+                            ADMIN DASHBOARD
+                            =================================================
+
+                            We will enable this after creating
+                            AdminDashboardScreen.
+
+                            Example:
+
+                            navigation.replace(
+                                "AdminDashboard"
+                            );
+
+                            =================================================
+                            */
+
+                        },
+
+                    },
+
+                ]
+
+            );
+
 
         } catch (error: any) {
-            console.log("ADMIN LOGIN ERROR:", error);
 
-            Alert.alert(
-                "Login Failed",
-                error?.message || "Unable to login."
+            console.error(
+                "ADMIN LOGIN ERROR:",
+                error
             );
+
+
+            // -------------------------------------------
+            // Network / CORS error
+            // -------------------------------------------
+
+            if (
+                error?.message ===
+                "Network request failed"
+            ) {
+
+                Alert.alert(
+
+                    "Connection Error",
+
+                    "Unable to connect to the Saath Groww server. Please make sure the backend is deployed and CORS is configured correctly."
+
+                );
+
+            } else {
+
+                Alert.alert(
+
+                    "Login Failed",
+
+                    error?.message ||
+                    "Unable to login. Please try again."
+
+                );
+
+            }
+
+
         } finally {
+
             setLoading(false);
+
         }
+
     };
 
+
+    /*
+    =====================================================
+    UI
+    =====================================================
+    */
+
     return (
+
         <KeyboardAvoidingView
+
             style={styles.container}
+
             behavior={
-                Platform.OS === "ios" ? "padding" : undefined
+                Platform.OS === "ios"
+                    ? "padding"
+                    : undefined
             }
+
         >
+
             <ScrollView
-                contentContainerStyle={styles.scrollContainer}
+
+                contentContainerStyle={
+                    styles.scrollContainer
+                }
+
                 keyboardShouldPersistTaps="handled"
+
             >
+
                 <View style={styles.card}>
 
-                    {/* Logo */}
-                    <View style={styles.logoContainer}>
-                        <Text style={styles.logoText}>SG</Text>
+
+                    {/* =================================
+                        LOGO
+                    ================================= */}
+
+                    <View
+                        style={
+                            styles.logoContainer
+                        }
+                    >
+
+                        <Text
+                            style={
+                                styles.logoText
+                            }
+                        >
+                            SG
+                        </Text>
+
                     </View>
 
-                    <Text style={styles.title}>
+
+                    {/* =================================
+                        TITLE
+                    ================================= */}
+
+                    <Text
+                        style={styles.title}
+                    >
                         Admin Login
                     </Text>
 
-                    <Text style={styles.subtitle}>
+
+                    <Text
+                        style={styles.subtitle}
+                    >
                         Saath Groww Administration
                     </Text>
 
-                    {/* Email */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>
+
+                    {/* =================================
+                        EMAIL
+                    ================================= */}
+
+                    <View
+                        style={
+                            styles.inputContainer
+                        }
+                    >
+
+                        <Text
+                            style={styles.label}
+                        >
                             Admin Email
                         </Text>
 
+
                         <TextInput
+
                             style={styles.input}
+
                             placeholder="Enter admin email"
+
                             placeholderTextColor="#999"
+
                             value={email}
-                            onChangeText={setEmail}
+
+                            onChangeText={
+                                setEmail
+                            }
+
                             keyboardType="email-address"
+
                             autoCapitalize="none"
+
                             autoCorrect={false}
+
+                            editable={!loading}
+
                         />
+
                     </View>
 
-                    {/* Password */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>
+
+                    {/* =================================
+                        PASSWORD
+                    ================================= */}
+
+                    <View
+                        style={
+                            styles.inputContainer
+                        }
+                    >
+
+                        <Text
+                            style={styles.label}
+                        >
                             Password
                         </Text>
 
-                        <View style={styles.passwordContainer}>
+
+                        <View
+                            style={
+                                styles.passwordContainer
+                            }
+                        >
+
                             <TextInput
-                                style={styles.passwordInput}
-                                placeholder="Enter admin password"
-                                placeholderTextColor="#999"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry={!showPassword}
+
+                                style={
+                                    styles.passwordInput
+                                }
+
+                                placeholder=
+                                "Enter admin password"
+
+                                placeholderTextColor=
+                                "#999"
+
+                                value={
+                                    password
+                                }
+
+                                onChangeText={
+                                    setPassword
+                                }
+
+                                secureTextEntry={
+                                    !showPassword
+                                }
+
                                 autoCapitalize="none"
+
+                                autoCorrect={false}
+
+                                editable={!loading}
+
                             />
 
+
                             <TouchableOpacity
+
                                 onPress={() =>
-                                    setShowPassword(!showPassword)
+                                    setShowPassword(
+                                        !showPassword
+                                    )
                                 }
+
+                                disabled={loading}
+
                             >
-                                <Text style={styles.showText}>
-                                    {showPassword ? "Hide" : "Show"}
+
+                                <Text
+                                    style={
+                                        styles.showText
+                                    }
+                                >
+
+                                    {
+                                        showPassword
+                                            ? "Hide"
+                                            : "Show"
+                                    }
+
                                 </Text>
+
                             </TouchableOpacity>
+
                         </View>
+
                     </View>
 
-                    {/* Login Button */}
+
+                    {/* =================================
+                        LOGIN BUTTON
+                    ================================= */}
+
                     <TouchableOpacity
+
                         style={[
+
                             styles.loginButton,
-                            loading && styles.disabledButton,
+
+                            loading &&
+                            styles.disabledButton,
+
                         ]}
-                        onPress={handleLogin}
-                        disabled={loading}
+
+                        onPress={
+                            handleLogin
+                        }
+
+                        disabled={
+                            loading
+                        }
+
                     >
+
                         {loading ? (
-                            <ActivityIndicator color="#FFFFFF" />
+
+                            <ActivityIndicator
+                                color="#FFFFFF"
+                            />
+
                         ) : (
-                            <Text style={styles.loginButtonText}>
+
+                            <Text
+                                style={
+                                    styles.loginButtonText
+                                }
+                            >
                                 Login as Admin
                             </Text>
+
                         )}
+
                     </TouchableOpacity>
 
-                    <Text style={styles.securityText}>
+
+                    {/* =================================
+                        SECURITY MESSAGE
+                    ================================= */}
+
+                    <Text
+                        style={
+                            styles.securityText
+                        }
+                    >
                         🔒 Authorized administrators only
                     </Text>
 
+
                 </View>
+
             </ScrollView>
+
         </KeyboardAvoidingView>
+
     );
+
 }
 
+
+/*
+=========================================================
+STYLES
+=========================================================
+*/
+
 const styles = StyleSheet.create({
+
     container: {
+
         flex: 1,
-        backgroundColor: "#F5F7F6",
+
+        backgroundColor:
+            "#F5F7F6",
+
     },
+
 
     scrollContainer: {
+
         flexGrow: 1,
-        justifyContent: "center",
+
+        justifyContent:
+            "center",
+
         padding: 24,
+
     },
+
 
     card: {
-        backgroundColor: "#FFFFFF",
+
+        backgroundColor:
+            "#FFFFFF",
+
         borderRadius: 20,
+
         padding: 24,
+
         elevation: 5,
-        shadowColor: "#000",
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
+
+        shadowColor:
+            "#000000",
+
+        shadowOpacity:
+            0.08,
+
+        shadowRadius:
+            10,
+
         shadowOffset: {
+
             width: 0,
+
             height: 4,
+
         },
+
     },
+
 
     logoContainer: {
+
         width: 70,
+
         height: 70,
+
         borderRadius: 35,
-        backgroundColor: "#1DAB52",
-        justifyContent: "center",
-        alignItems: "center",
-        alignSelf: "center",
+
+        backgroundColor:
+            "#1DAB52",
+
+        justifyContent:
+            "center",
+
+        alignItems:
+            "center",
+
+        alignSelf:
+            "center",
+
         marginBottom: 18,
+
     },
+
 
     logoText: {
-        color: "#FFFFFF",
+
+        color:
+            "#FFFFFF",
+
         fontSize: 25,
-        fontWeight: "bold",
+
+        fontWeight:
+            "bold",
+
     },
+
 
     title: {
+
         fontSize: 28,
-        fontWeight: "700",
-        color: "#1DAB52",
-        textAlign: "center",
+
+        fontWeight:
+            "700",
+
+        color:
+            "#1DAB52",
+
+        textAlign:
+            "center",
+
     },
+
 
     subtitle: {
+
         fontSize: 15,
-        color: "#777",
-        textAlign: "center",
+
+        color:
+            "#777777",
+
+        textAlign:
+            "center",
+
         marginTop: 6,
+
         marginBottom: 30,
+
     },
+
 
     inputContainer: {
+
         marginBottom: 20,
+
     },
+
 
     label: {
+
         fontSize: 14,
-        fontWeight: "600",
-        color: "#333",
+
+        fontWeight:
+            "600",
+
+        color:
+            "#333333",
+
         marginBottom: 8,
+
     },
+
 
     input: {
+
         height: 52,
+
         borderWidth: 1,
-        borderColor: "#D8D8D8",
+
+        borderColor:
+            "#D8D8D8",
+
         borderRadius: 10,
+
         paddingHorizontal: 15,
+
         fontSize: 15,
-        color: "#222",
-        backgroundColor: "#FAFAFA",
+
+        color:
+            "#222222",
+
+        backgroundColor:
+            "#FAFAFA",
+
     },
+
 
     passwordContainer: {
+
         height: 52,
+
         borderWidth: 1,
-        borderColor: "#D8D8D8",
+
+        borderColor:
+            "#D8D8D8",
+
         borderRadius: 10,
-        flexDirection: "row",
-        alignItems: "center",
+
+        flexDirection:
+            "row",
+
+        alignItems:
+            "center",
+
         paddingLeft: 15,
+
         paddingRight: 12,
-        backgroundColor: "#FAFAFA",
+
+        backgroundColor:
+            "#FAFAFA",
+
     },
+
 
     passwordInput: {
+
         flex: 1,
+
         fontSize: 15,
-        color: "#222",
+
+        color:
+            "#222222",
+
     },
+
 
     showText: {
-        color: "#1DAB52",
-        fontWeight: "600",
+
+        color:
+            "#1DAB52",
+
+        fontWeight:
+            "600",
+
     },
+
 
     loginButton: {
+
         height: 54,
-        backgroundColor: "#1DAB52",
+
+        backgroundColor:
+            "#1DAB52",
+
         borderRadius: 12,
-        justifyContent: "center",
-        alignItems: "center",
+
+        justifyContent:
+            "center",
+
+        alignItems:
+            "center",
+
         marginTop: 8,
+
     },
+
 
     disabledButton: {
+
         opacity: 0.7,
+
     },
+
 
     loginButtonText: {
-        color: "#FFFFFF",
+
+        color:
+            "#FFFFFF",
+
         fontSize: 16,
-        fontWeight: "700",
+
+        fontWeight:
+            "700",
+
     },
 
+
     securityText: {
-        textAlign: "center",
+
+        textAlign:
+            "center",
+
         marginTop: 20,
+
         fontSize: 12,
-        color: "#888",
+
+        color:
+            "#888888",
+
     },
+
 });

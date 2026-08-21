@@ -89,7 +89,6 @@ def migrate_database():
                 "email_verified column already exists."
             )
 
-
     # =====================================================
     # EMAIL OTP TABLE
     # =====================================================
@@ -138,20 +137,45 @@ app = FastAPI(
 # CORS CONFIGURATION
 # =========================================================
 #
-# Allows React Native / Expo Web running on localhost
-# and 127.0.0.1 on any development port.
+# IMPORTANT:
+# Only ONE CORSMiddleware should be registered.
 #
-# Example:
+# This allows:
 #
-# http://localhost:8081
-# http://localhost:8082
-# http://localhost:3000
+# localhost:8081
+# localhost:8082
+# localhost:3000
 #
+# 127.0.0.1:8081
+# 127.0.0.1:8082
+# 127.0.0.1:3000
+#
+# The regex additionally allows any localhost/127.0.0.1
+# development port.
 # =========================================================
+
+allowed_origins = [
+
+    "http://localhost:8081",
+
+    "http://localhost:8082",
+
+    "http://localhost:3000",
+
+    "http://127.0.0.1:8081",
+
+    "http://127.0.0.1:8082",
+
+    "http://127.0.0.1:3000",
+
+]
+
 
 app.add_middleware(
 
     CORSMiddleware,
+
+    allow_origins=allowed_origins,
 
     allow_origin_regex=(
         r"^https?://"
@@ -164,6 +188,8 @@ app.add_middleware(
     allow_methods=["*"],
 
     allow_headers=["*"],
+
+    expose_headers=["*"],
 
 )
 
