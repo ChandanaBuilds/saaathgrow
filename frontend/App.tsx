@@ -51,6 +51,9 @@ import ProfileScreen
 import WalletScreen
   from "./src/screens/WalletScreen";
 
+import AdminDashboardScreen
+  from "./src/screens/AdminDashboardScreen";
+
 // =========================================================
 // ADMIN SCREEN
 // =========================================================
@@ -102,6 +105,13 @@ export default function App() {
         <Stack.Screen
           name="Login"
           component={LoginScreen}
+        />
+        <Stack.Screen
+          name="AdminDashboard"
+          component={AdminDashboardScreen}
+          options={{
+            headerShown: false,
+          }}
         />
 
         <Stack.Screen

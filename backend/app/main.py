@@ -22,9 +22,7 @@ from app.models.wallet import Wallet
 # DATABASE SETUP
 # =========================================================
 
-Base.metadata.create_all(
-    bind=engine
-)
+Base.metadata.create_all(bind=engine)
 
 
 # =========================================================
@@ -47,10 +45,6 @@ def migrate_database():
             column["name"]
             for column in inspector.get_columns("users")
         ]
-
-        # -------------------------------------------------
-        # Add email_verified if missing
-        # -------------------------------------------------
 
         if "email_verified" not in columns:
 
@@ -125,27 +119,40 @@ migrate_database()
 # =========================================================
 
 app = FastAPI(
+
     title="Saath Groww Delivery API",
+
     version="2.0.0"
+
 )
 
 
 # =========================================================
 # CORS CONFIGURATION
 # =========================================================
+#
+# IMPORTANT:
+# Keep ONLY ONE CORSMiddleware.
+#
+# This allows:
+#
+# Expo Web
+# localhost:8081
+# localhost:8082
+# localhost:3000
+#
+# 127.0.0.1 variants
+# =========================================================
 
 app.add_middleware(
+
     CORSMiddleware,
 
     allow_origins=[
-        # Expo / React Native Web
         "http://localhost:8081",
         "http://localhost:8082",
-
-        # React / Next.js
         "http://localhost:3000",
 
-        # 127.0.0.1
         "http://127.0.0.1:8081",
         "http://127.0.0.1:8082",
         "http://127.0.0.1:3000",
@@ -153,11 +160,24 @@ app.add_middleware(
 
     allow_credentials=True,
 
-    allow_methods=["*"],
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    ],
 
-    allow_headers=["*"],
+    allow_headers=[
+        "Accept",
+        "Authorization",
+        "Content-Type",
+    ],
 
-    expose_headers=["*"],
+    expose_headers=[
+        "Content-Length",
+    ],
 )
 
 
@@ -211,7 +231,13 @@ app.include_router(
 def health():
 
     return {
+
         "success": True,
-        "message": "Saath Groww Backend Running",
-        "version": "2.0.0"
+
+        "message":
+            "Saath Groww Backend Running",
+
+        "version":
+            "2.0.0"
+
     }

@@ -21,7 +21,7 @@ BACKEND URL
 */
 
 const API_URL =
-    "https://saaathgroww.onrender.com";
+    "https://saaathgrow.onrender.com";
 
 
 export default function AdminLoginScreen({
@@ -127,12 +127,18 @@ export default function AdminLoginScreen({
                 "ADMIN LOGIN SUCCESS:",
                 data
             );
-
-            Alert.alert(
-                "Login Successful",
-                "Welcome to Saath Groww Admin Panel."
+            console.log(
+                "ADMIN LOGIN SUCCESS:",
+                data
             );
 
+            navigation.replace(
+                "AdminDashboard",
+                {
+                    access_token:
+                        data.access_token,
+                }
+            );
             /*
              * Later we will do:
              *
