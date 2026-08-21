@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+
 import {
     View,
     Text,
@@ -7,19 +8,24 @@ import {
     StatusBar,
 } from "react-native";
 
+
 export default function SplashScreen({ navigation }: any) {
 
     useEffect(() => {
 
         const timer = setTimeout(() => {
+
             navigation.replace("Login");
+
         }, 2000);
 
         return () => clearTimeout(timer);
 
     }, [navigation]);
 
+
     return (
+
         <View style={styles.container}>
 
             <StatusBar
@@ -42,8 +48,10 @@ export default function SplashScreen({ navigation }: any) {
             </Text>
 
         </View>
+
     );
 }
+
 
 const styles = StyleSheet.create({
 

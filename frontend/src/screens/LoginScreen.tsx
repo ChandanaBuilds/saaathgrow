@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 
 import {
@@ -18,13 +17,26 @@ import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 
 
-const API_URL =
-    "https://saaathgrow.onrender.com";
+// =========================================================
+// API
+// =========================================================
 
+const API_URL =
+    "https://saaathgroww.onrender.com";
+
+
+// =========================================================
+// LOGIN SCREEN
+// =========================================================
 
 export default function LoginScreen() {
 
     const navigation = useNavigation<any>();
+
+
+    // =====================================================
+    // STATE
+    // =====================================================
 
     const [email, setEmail] = useState("");
 
@@ -49,7 +61,7 @@ export default function LoginScreen() {
 
 
     // =====================================================
-    // EXISTING USER LOGIN
+    // NORMAL USER LOGIN
     // =====================================================
 
     const handleLogin = async () => {
@@ -58,7 +70,10 @@ export default function LoginScreen() {
             email.trim().toLowerCase();
 
 
-        // Empty email
+        // -------------------------------------------------
+        // EMPTY EMAIL
+        // -------------------------------------------------
+
         if (!cleanEmail) {
 
             Alert.alert(
@@ -70,11 +85,14 @@ export default function LoginScreen() {
         }
 
 
-        // Invalid email
+        // -------------------------------------------------
+        // INVALID EMAIL
+        // -------------------------------------------------
+
         if (!isValidEmail(cleanEmail)) {
 
             Alert.alert(
-                "Invalid Gmail",
+                "Invalid Email",
                 "Please enter a valid Gmail address."
             );
 
@@ -86,6 +104,10 @@ export default function LoginScreen() {
 
             setLoading(true);
 
+
+            // -------------------------------------------------
+            // SEND LOGIN OTP
+            // -------------------------------------------------
 
             const response = await axios.post(
 
@@ -113,6 +135,10 @@ export default function LoginScreen() {
             );
 
 
+            // -------------------------------------------------
+            // CHECK RESPONSE
+            // -------------------------------------------------
+
             if (!data.success) {
 
                 Alert.alert(
@@ -125,11 +151,19 @@ export default function LoginScreen() {
             }
 
 
+            // -------------------------------------------------
+            // OTP SENT
+            // -------------------------------------------------
+
             Alert.alert(
                 "OTP Sent",
                 "A login OTP has been sent to your email."
             );
 
+
+            // -------------------------------------------------
+            // GO TO EMAIL OTP SCREEN
+            // -------------------------------------------------
 
             navigation.navigate(
                 "EmailOTP",
@@ -156,9 +190,11 @@ export default function LoginScreen() {
                 "Unable to connect to the server. Please try again."
             );
 
+
         } finally {
 
             setLoading(false);
+
         }
     };
 
@@ -169,9 +205,29 @@ export default function LoginScreen() {
 
     const handleRegister = () => {
 
-        navigation.navigate("Register");
+        navigation.navigate(
+            "Register"
+        );
+
     };
 
+
+    // =====================================================
+    // ADMIN LOGIN
+    // =====================================================
+
+    const handleAdminLogin = () => {
+
+        navigation.navigate(
+            "AdminLogin"
+        );
+
+    };
+
+
+    // =====================================================
+    // UI
+    // =====================================================
 
     return (
 
@@ -207,6 +263,10 @@ export default function LoginScreen() {
             </Text>
 
 
+            {/* =================================================
+                TAGLINE
+            ================================================= */}
+
             <Text style={styles.tagline}>
                 Groww together, earn together
             </Text>
@@ -238,6 +298,7 @@ export default function LoginScreen() {
 
 
                 <TextInput
+
                     placeholder="Enter Gmail address"
 
                     placeholderTextColor="#999"
@@ -252,17 +313,21 @@ export default function LoginScreen() {
 
                     autoCorrect={false}
 
+                    editable={!loading}
+
                     style={styles.input}
+
                 />
 
             </View>
 
 
             {/* =================================================
-                LOGIN BUTTON
+                NORMAL LOGIN BUTTON
             ================================================= */}
 
             <TouchableOpacity
+
                 style={[
                     styles.button,
 
@@ -273,12 +338,15 @@ export default function LoginScreen() {
                 onPress={handleLogin}
 
                 disabled={loading}
+
+                activeOpacity={0.8}
             >
 
                 {loading ? (
 
                     <ActivityIndicator
                         color="#FFFFFF"
+                        size="small"
                     />
 
                 ) : (
@@ -286,13 +354,14 @@ export default function LoginScreen() {
                     <Text style={styles.buttonText}>
                         Continue with Email
                     </Text>
+
                 )}
 
             </TouchableOpacity>
 
 
             {/* =================================================
-                REGISTER SECTION
+                REGISTER
             ================================================= */}
 
             <View style={styles.registerContainer}>
@@ -303,8 +372,12 @@ export default function LoginScreen() {
 
 
                 <TouchableOpacity
+
                     onPress={handleRegister}
+
                     disabled={loading}
+
+                    activeOpacity={0.7}
                 >
 
                     <Text style={styles.registerLink}>
@@ -317,6 +390,28 @@ export default function LoginScreen() {
 
 
             {/* =================================================
+                ADMIN LOGIN
+            ================================================= */}
+
+            <TouchableOpacity
+
+                style={styles.adminLoginButton}
+
+                onPress={handleAdminLogin}
+
+                disabled={loading}
+
+                activeOpacity={0.8}
+            >
+
+                <Text style={styles.adminLoginText}>
+                    Admin Login
+                </Text>
+
+            </TouchableOpacity>
+
+
+            {/* =================================================
                 FOOTER
             ================================================= */}
 
@@ -324,14 +419,26 @@ export default function LoginScreen() {
                 Secure login with email verification
             </Text>
 
+
         </View>
+
     );
+
 }
 
 
+// =========================================================
+// STYLES
+// =========================================================
+
 const styles = StyleSheet.create({
 
+    // =====================================================
+    // CONTAINER
+    // =====================================================
+
     container: {
+
         flex: 1,
 
         backgroundColor: "#FFFDFF",
@@ -339,10 +446,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 25,
 
         justifyContent: "center",
+
     },
 
 
+    // =====================================================
+    // LOGO
+    // =====================================================
+
     logo: {
+
         width: 110,
 
         height: 110,
@@ -352,10 +465,16 @@ const styles = StyleSheet.create({
         alignSelf: "center",
 
         marginBottom: 20,
+
     },
 
 
+    // =====================================================
+    // APP NAME
+    // =====================================================
+
     appName: {
+
         fontSize: 34,
 
         fontWeight: "800",
@@ -363,10 +482,16 @@ const styles = StyleSheet.create({
         color: "#1DAB52",
 
         textAlign: "center",
+
     },
 
 
+    // =====================================================
+    // TAGLINE
+    // =====================================================
+
     tagline: {
+
         fontSize: 15,
 
         color: "#78C4D8",
@@ -376,10 +501,16 @@ const styles = StyleSheet.create({
         marginTop: 6,
 
         marginBottom: 35,
+
     },
 
 
+    // =====================================================
+    // HEADING
+    // =====================================================
+
     heading: {
+
         fontSize: 27,
 
         fontWeight: "700",
@@ -387,10 +518,16 @@ const styles = StyleSheet.create({
         color: "#222",
 
         textAlign: "center",
+
     },
 
 
+    // =====================================================
+    // SUB HEADING
+    // =====================================================
+
     subHeading: {
+
         fontSize: 14,
 
         color: "#777",
@@ -400,10 +537,16 @@ const styles = StyleSheet.create({
         marginTop: 10,
 
         marginBottom: 30,
+
     },
 
 
+    // =====================================================
+    // EMAIL INPUT
+    // =====================================================
+
     inputContainer: {
+
         flexDirection: "row",
 
         alignItems: "center",
@@ -421,28 +564,38 @@ const styles = StyleSheet.create({
         backgroundColor: "#FFFFFF",
 
         marginBottom: 20,
+
     },
 
 
     emailIcon: {
+
         fontSize: 20,
 
         color: "#1DAB52",
 
         marginRight: 10,
+
     },
 
 
     input: {
+
         flex: 1,
 
         fontSize: 16,
 
         color: "#222",
+
     },
 
 
+    // =====================================================
+    // NORMAL LOGIN BUTTON
+    // =====================================================
+
     button: {
+
         backgroundColor: "#1DAB52",
 
         height: 58,
@@ -462,28 +615,40 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
 
         shadowOffset: {
+
             width: 0,
 
             height: 4,
+
         },
+
     },
 
 
     buttonDisabled: {
+
         opacity: 0.7,
+
     },
 
 
     buttonText: {
+
         color: "#FFFDFF",
 
         fontSize: 17,
 
         fontWeight: "700",
+
     },
 
 
+    // =====================================================
+    // REGISTER
+    // =====================================================
+
     registerContainer: {
+
         flexDirection: "row",
 
         justifyContent: "center",
@@ -491,17 +656,21 @@ const styles = StyleSheet.create({
         alignItems: "center",
 
         marginTop: 30,
+
     },
 
 
     registerText: {
+
         color: "#666",
 
         fontSize: 15,
+
     },
 
 
     registerLink: {
+
         color: "#1DAB52",
 
         fontSize: 15,
@@ -509,17 +678,60 @@ const styles = StyleSheet.create({
         fontWeight: "800",
 
         marginLeft: 6,
+
     },
 
 
+    // =====================================================
+    // ADMIN LOGIN BUTTON
+    // =====================================================
+
+    adminLoginButton: {
+
+        marginTop: 22,
+
+        alignSelf: "center",
+
+        paddingVertical: 11,
+
+        paddingHorizontal: 30,
+
+        borderWidth: 1.5,
+
+        borderColor: "#1DAB52",
+
+        borderRadius: 10,
+
+        backgroundColor: "#FFFDFF",
+
+    },
+
+
+    adminLoginText: {
+
+        color: "#1DAB52",
+
+        fontSize: 14,
+
+        fontWeight: "700",
+
+    },
+
+
+    // =====================================================
+    // FOOTER
+    // =====================================================
+
     footerText: {
+
         textAlign: "center",
 
-        marginTop: 35,
+        marginTop: 30,
 
         fontSize: 12,
 
         color: "#999",
+
     },
 
 });

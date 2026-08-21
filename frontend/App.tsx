@@ -1,4 +1,3 @@
-
 import React from "react";
 
 import {
@@ -8,7 +7,6 @@ import {
 import {
   createNativeStackNavigator,
 } from "@react-navigation/native-stack";
-
 
 // =========================================================
 // SCREENS
@@ -53,10 +51,24 @@ import ProfileScreen
 import WalletScreen
   from "./src/screens/WalletScreen";
 
+// =========================================================
+// ADMIN SCREEN
+// =========================================================
+
+import AdminLoginScreen
+  from "./src/screens/AdminLoginScreen";
+
+// =========================================================
+// NAVIGATION
+// =========================================================
 
 const Stack =
   createNativeStackNavigator();
 
+
+// =========================================================
+// APP
+// =========================================================
 
 export default function App() {
 
@@ -75,7 +87,7 @@ export default function App() {
 
         {/* =================================================
                     SPLASH
-                ================================================= */}
+            ================================================= */}
 
         <Stack.Screen
           name="Splash"
@@ -84,8 +96,8 @@ export default function App() {
 
 
         {/* =================================================
-    AUTHENTICATION
-================================================= */}
+                    AUTHENTICATION
+            ================================================= */}
 
         <Stack.Screen
           name="Login"
@@ -107,21 +119,20 @@ export default function App() {
           component={EmailOTPScreen}
         />
 
+
         {/* =================================================
                     REGISTRATION
-                ================================================= */}
+            ================================================= */}
 
         <Stack.Screen
           name="CreateProfile"
           component={CreateProfileScreen}
         />
 
-
         <Stack.Screen
           name="DocumentUpload"
           component={DocumentUploadScreen}
         />
-
 
         <Stack.Screen
           name="VerificationPending"
@@ -133,35 +144,44 @@ export default function App() {
 
         {/* =================================================
                     MAIN APPLICATION
-                ================================================= */}
+            ================================================= */}
 
         <Stack.Screen
           name="Main"
           component={HomeScreen}
         />
 
-
         <Stack.Screen
           name="Dashboard"
           component={DashboardScreen}
         />
-
 
         <Stack.Screen
           name="Orders"
           component={OrdersScreen}
         />
 
-
         <Stack.Screen
           name="Wallet"
           component={WalletScreen}
         />
 
-
         <Stack.Screen
           name="Profile"
           component={ProfileScreen}
+        />
+
+
+        {/* =================================================
+                    ADMIN
+            ================================================= */}
+
+        <Stack.Screen
+          name="AdminLogin"
+          component={AdminLoginScreen}
+          options={{
+            headerShown: false,
+          }}
         />
 
       </Stack.Navigator>

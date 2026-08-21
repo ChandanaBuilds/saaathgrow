@@ -22,19 +22,11 @@ from app.models.wallet import Wallet
 # DATABASE SETUP
 # =========================================================
 
-Base.metadata.create_all(
-    bind=engine
-)
+Base.metadata.create_all(bind=engine)
 
 
 # =========================================================
 # DATABASE MIGRATION
-# =========================================================
-#
-# This checks whether the users table contains
-# email_verified.
-#
-# This is mainly useful for existing databases.
 # =========================================================
 
 def migrate_database():
@@ -42,7 +34,6 @@ def migrate_database():
     inspector = inspect(engine)
 
     tables = inspector.get_table_names()
-
 
     # =====================================================
     # USERS TABLE
@@ -52,21 +43,13 @@ def migrate_database():
 
         columns = [
             column["name"]
-            for column in inspector.get_columns(
-                "users"
-            )
+            for column in inspector.get_columns("users")
         ]
-
-
-        # -------------------------------------------------
-        # Add email_verified if missing
-        # -------------------------------------------------
 
         if "email_verified" not in columns:
 
             print(
-                "Adding email_verified column "
-                "to users table..."
+                "Adding email_verified column to users table..."
             )
 
             try:
@@ -84,8 +67,7 @@ def migrate_database():
                     )
 
                 print(
-                    "email_verified column added "
-                    "successfully."
+                    "email_verified column added successfully."
                 )
 
             except Exception as error:
@@ -101,7 +83,6 @@ def migrate_database():
                 "email_verified column already exists."
             )
 
-
     # =====================================================
     # EMAIL OTP TABLE
     # =====================================================
@@ -109,7 +90,6 @@ def migrate_database():
     inspector = inspect(engine)
 
     tables = inspector.get_table_names()
-
 
     if "email_otps" not in tables:
 
@@ -150,23 +130,25 @@ app = FastAPI(
 # =========================================================
 # CORS
 # =========================================================
+#
+# React Native Web / Expo development:
+# http://localhost:8081
+#
+# Other possible local development ports are also included.
+# =========================================================
 
 origins = [
 
-    # ---------------------------------------------
-    # Local development
-    # ---------------------------------------------
-
+    # React Native / Expo Web
     "http://localhost:8081",
-
     "http://localhost:8082",
 
+    # React / Next.js development
     "http://localhost:3000",
 
+    # 127.0.0.1 versions
     "http://127.0.0.1:8081",
-
     "http://127.0.0.1:8082",
-
     "http://127.0.0.1:3000",
 
 ]
