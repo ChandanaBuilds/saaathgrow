@@ -1157,31 +1157,32 @@ def old_phone_otp_endpoint():
         )
     }
 # =========================================================
-# DOCUMENT UPLOAD
+# UPLOAD DOCUMENTS
+# =========================================================
+
+# =========================================================
+# UPLOAD DOCUMENTS
 # =========================================================
 
 @router.post("/upload-documents")
-def upload_documents(
+async def upload_documents(
     user_id: int = Form(...),
 
-    profile_photo: UploadFile | None = File(None),
+    aadhaar: UploadFile = File(...),
 
-    aadhaar_front: UploadFile | None = File(None),
-    aadhaar_back: UploadFile | None = File(None),
+    pan_card: UploadFile = File(...),
 
-    pan_card: UploadFile | None = File(None),
-
-    driving_license_front: UploadFile | None = File(None),
-    driving_license_back: UploadFile | None = File(None),
-
-    vehicle_rc: UploadFile | None = File(None),
-    insurance: UploadFile | None = File(None),
+    driving_license: UploadFile = File(...),
 
     db: Session = Depends(get_db)
 ):
+    print("======================================")
+    print("DOCUMENT UPLOAD REQUEST")
+    print("USER ID:", user_id)
+    print("======================================")
 
     # =====================================================
-    # FIND USER
+    # CHECK USER
     # =====================================================
 
     user = (
@@ -1192,42 +1193,47 @@ def upload_documents(
 
     if not user:
 
+        print("USER NOT FOUND:", user_id)
+
         return {
             "success": False,
             "message": "User account not found."
         }
 
+    # =====================================================
+    # CHECK REQUIRED FILES
+    # =====================================================
+
+    files = {
+        "aadhaar": aadhaar,
+        "pan_card": pan_card,
+        "driving_license": driving_license
+    }
+
+    for field_name, file in files.items():
+
+        if file is None:
+
+            return {
+                "success": False,
+                "message": (
+                    f"{field_name.replace('_', ' ').title()} "
+                    "is required."
+                )
+            }
+
+        if not file.filename:
+
+            return {
+                "success": False,
+                "message": (
+                    f"{field_name.replace('_', ' ').title()} "
+                    "is empty."
+                )
+            }
 
     # =====================================================
-    # REQUIRED DOCUMENT VALIDATION
-    # =====================================================
-
-    if not aadhaar_front:
-
-        return {
-            "success": False,
-            "message": "Aadhaar Card is required."
-        }
-
-
-    if not pan_card:
-
-        return {
-            "success": False,
-            "message": "PAN Card is required."
-        }
-
-
-    if not driving_license_front:
-
-        return {
-            "success": False,
-            "message": "Driving License is required."
-        }
-
-
-    # =====================================================
-    # UPLOAD DIRECTORY
+    # CREATE UPLOAD DIRECTORY
     # =====================================================
 
     upload_directory = "uploads"
@@ -1237,7 +1243,6 @@ def upload_documents(
         exist_ok=True
     )
 
-
     # =====================================================
     # CREATE DOCUMENT RECORD
     # =====================================================
@@ -1246,38 +1251,7 @@ def upload_documents(
         user_id=user_id
     )
 
-
-    # =====================================================
-    # FILE LIST
-    # =====================================================
-
-    files = {
-
-        "profile_photo":
-            profile_photo,
-
-        "aadhaar_front":
-            aadhaar_front,
-
-        "aadhaar_back":
-            aadhaar_back,
-
-        "pan_card":
-            pan_card,
-
-        "driving_license_front":
-            driving_license_front,
-
-        "driving_license_back":
-            driving_license_back,
-
-        "vehicle_rc":
-            vehicle_rc,
-
-        "insurance":
-            insurance,
-    }
-
+    uploaded_files = []
 
     # =====================================================
     # SAVE FILES
@@ -1285,36 +1259,30 @@ def upload_documents(
 
     for field_name, file in files.items():
 
-        if file is None:
-            continue
+        print(
+            "Uploading:",
+            field_name,
+            file.filename
+        )
 
+        # -------------------------------------------------
+        # SAFE FILE NAME
+        # -------------------------------------------------
+
+        safe_filename = os.path.basename(
+            file.filename
+        )
+
+        # -------------------------------------------------
+        # UNIQUE FILE NAME
+        # -------------------------------------------------
+
+        file_path = os.path.join(
+            upload_directory,
+            f"{user_id}_{field_name}_{safe_filename}"
+        )
 
         try:
-
-            # ---------------------------------------------
-            # SAFE FILE NAME
-            # ---------------------------------------------
-
-            filename = os.path.basename(
-                file.filename or "document"
-            )
-
-
-            # ---------------------------------------------
-            # UNIQUE FILE NAME
-            # ---------------------------------------------
-
-            file_path = os.path.join(
-
-                upload_directory,
-
-                f"{user_id}_{field_name}_{filename}"
-            )
-
-
-            # ---------------------------------------------
-            # WRITE FILE
-            # ---------------------------------------------
 
             with open(
                 file_path,
@@ -1326,18 +1294,6 @@ def upload_documents(
                     buffer
                 )
 
-
-            # ---------------------------------------------
-            # SAVE PATH IN DATABASE
-            # ---------------------------------------------
-
-            setattr(
-                document,
-                field_name,
-                file_path
-            )
-
-
         except Exception as error:
 
             print(
@@ -1345,36 +1301,48 @@ def upload_documents(
                 error
             )
 
-            db.rollback()
-
             return {
-
                 "success": False,
-
-                "message":
-                    f"Unable to save {field_name}."
+                "message": (
+                    f"Unable to save "
+                    f"{field_name.replace('_', ' ').title()}."
+                )
             }
 
+        # =================================================
+        # MAP TO EXISTING DOCUMENT MODEL
+        # =================================================
+
+        if field_name == "aadhaar":
+
+            document.aadhaar_front = file_path
+
+        elif field_name == "pan_card":
+
+            document.pan_card = file_path
+
+        elif field_name == "driving_license":
+
+            document.driving_license_front = file_path
+
+        uploaded_files.append(
+            field_name
+        )
+
+        print(
+            "Saved:",
+            file_path
+        )
 
     # =====================================================
-    # SAVE DOCUMENT RECORD
-    # =====================================================
-
-    db.add(document)
-
-
-    # =====================================================
-    # UPDATE USER STATUS
-    # =====================================================
-
-    user.status = "pending_verification"
-
-
-    # =====================================================
-    # COMMIT
+    # DATABASE SAVE
     # =====================================================
 
     try:
+
+        db.add(document)
+
+        user.status = "pending_verification"
 
         db.commit()
 
@@ -1385,21 +1353,46 @@ def upload_documents(
         db.rollback()
 
         print(
-            "DOCUMENT DATABASE ERROR:",
+            "DATABASE ERROR:",
             error
         )
 
         return {
-
             "success": False,
-
-            "message":
+            "message": (
                 "Unable to save document information."
+            )
         }
 
+    # =====================================================
+    # SUCCESS LOGS
+    # =====================================================
+
+    print(
+        "DOCUMENTS SAVED SUCCESSFULLY"
+    )
+
+    print(
+        "DOCUMENT ID:",
+        document.id
+    )
+
+    print(
+        "USER STATUS:",
+        user.status
+    )
+
+    print(
+        "UPLOADED FILES:",
+        uploaded_files
+    )
+
+    print(
+        "======================================"
+    )
 
     # =====================================================
-    # SUCCESS
+    # RESPONSE
     # =====================================================
 
     return {
@@ -1412,6 +1405,12 @@ def upload_documents(
         "user_id":
             user_id,
 
+        "document_id":
+            document.id,
+
         "status":
-            user.status
+            user.status,
+
+        "uploaded_files":
+            uploaded_files
     }

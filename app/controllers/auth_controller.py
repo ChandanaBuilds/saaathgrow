@@ -191,9 +191,9 @@ async def upload_documents(
     print("USER ID:", user_id)
     print("======================================")
 
-    # --------------------------------------------------
+    # ==================================================
     # CHECK USER
-    # --------------------------------------------------
+    # ==================================================
 
     user = (
         db.query(User)
@@ -202,7 +202,6 @@ async def upload_documents(
     )
 
     if not user:
-
         print("USER NOT FOUND:", user_id)
 
         return {
@@ -210,9 +209,62 @@ async def upload_documents(
             "message": "User account not found."
         }
 
+    # ==================================================
+    # REQUIRED DOCUMENTS
+    # ==================================================
+
+    required_documents = {
+        "aadhaar_front": aadhaar_front,
+        "aadhaar_back": aadhaar_back,
+        "pan_card": pan_card,
+        "driving_license_front": driving_license_front,
+        "driving_license_back": driving_license_back,
+    }
+
     # --------------------------------------------------
+    # CHECK REQUIRED DOCUMENTS BEFORE SAVING
+    # --------------------------------------------------
+
+    for field_name, file in required_documents.items():
+
+        if file is None:
+
+            readable_name = (
+                field_name
+                .replace("_", " ")
+                .title()
+            )
+
+            print(
+                "MISSING REQUIRED DOCUMENT:",
+                readable_name
+            )
+
+            return {
+                "success": False,
+                "message": (
+                    f"{readable_name} is required."
+                )
+            }
+
+        if not file.filename:
+
+            readable_name = (
+                field_name
+                .replace("_", " ")
+                .title()
+            )
+
+            return {
+                "success": False,
+                "message": (
+                    f"{readable_name} is empty."
+                )
+            }
+
+    # ==================================================
     # CREATE UPLOAD DIRECTORY
-    # --------------------------------------------------
+    # ==================================================
 
     upload_directory = "uploads"
 
@@ -221,25 +273,31 @@ async def upload_documents(
         exist_ok=True
     )
 
-    # --------------------------------------------------
+    # ==================================================
     # CREATE DOCUMENT RECORD
-    # --------------------------------------------------
+    # ==================================================
 
     document = Document(
         user_id=user_id
     )
 
-    # --------------------------------------------------
-    # FILES
-    # --------------------------------------------------
+    # ==================================================
+    # ALL FILES
+    # ==================================================
 
     files = {
-        "profile_photo": profile_photo,
 
-        "aadhaar_front": aadhaar_front,
-        "aadhaar_back": aadhaar_back,
+        "profile_photo":
+            profile_photo,
 
-        "pan_card": pan_card,
+        "aadhaar_front":
+            aadhaar_front,
+
+        "aadhaar_back":
+            aadhaar_back,
+
+        "pan_card":
+            pan_card,
 
         "driving_license_front":
             driving_license_front,
@@ -247,20 +305,25 @@ async def upload_documents(
         "driving_license_back":
             driving_license_back,
 
-        "vehicle_rc": vehicle_rc,
+        "vehicle_rc":
+            vehicle_rc,
 
-        "insurance": insurance,
+        "insurance":
+            insurance,
     }
 
     uploaded_files = []
 
-    # --------------------------------------------------
+    # ==================================================
     # SAVE FILES
-    # --------------------------------------------------
+    # ==================================================
 
     for field_name, file in files.items():
 
         if file is None:
+            continue
+
+        if not file.filename:
             continue
 
         print(
@@ -269,18 +332,30 @@ async def upload_documents(
             file.filename
         )
 
-        # Prevent empty files
-        if not file.filename:
-            continue
+        # ------------------------------------------------
+        # SAFE FILE NAME
+        # ------------------------------------------------
 
-        # Simple safe filename
         safe_filename = os.path.basename(
             file.filename
         )
 
+        # ------------------------------------------------
+        # UNIQUE FILE NAME
+        # ------------------------------------------------
+        #
+        # Example:
+        #
+        # 1_aadhaar_front_pan-card.jpg
+        # 1_aadhaar_back_pan-card.jpg
+        #
+        # This prevents Aadhaar front/back from
+        # overwriting each other.
+        # ------------------------------------------------
+
         file_path = os.path.join(
             upload_directory,
-            f"{user_id}_{safe_filename}"
+            f"{user_id}_{field_name}_{safe_filename}"
         )
 
         try:
@@ -306,11 +381,14 @@ async def upload_documents(
                 "success": False,
                 "message": (
                     f"Unable to save "
-                    f"{field_name}."
+                    f"{field_name.replace('_', ' ').title()}."
                 )
             }
 
-        # Save path in database
+        # ------------------------------------------------
+        # SAVE PATH IN DATABASE
+        # ------------------------------------------------
+
         setattr(
             document,
             field_name,
@@ -326,31 +404,60 @@ async def upload_documents(
             file_path
         )
 
-    # --------------------------------------------------
-    # CHECK DOCUMENTS
-    # --------------------------------------------------
+    # ==================================================
+    # CHECK UPLOADED FILES
+    # ==================================================
 
     if not uploaded_files:
 
         return {
             "success": False,
             "message": (
-                "Please upload at least "
-                "one document."
+                "No documents were uploaded."
             )
         }
 
-    # --------------------------------------------------
-    # SAVE DOCUMENT RECORD
-    # --------------------------------------------------
+    # ==================================================
+    # SAVE DOCUMENT DATABASE RECORD
+    # ==================================================
 
-    db.add(document)
+    try:
 
-    user.status = "pending_verification"
+        db.add(document)
 
-    db.commit()
+        # ------------------------------------------------
+        # UPDATE USER STATUS
+        # ------------------------------------------------
 
-    db.refresh(document)
+        user.status = "pending_verification"
+
+        # ------------------------------------------------
+        # COMMIT
+        # ------------------------------------------------
+
+        db.commit()
+
+        db.refresh(document)
+
+    except Exception as error:
+
+        db.rollback()
+
+        print(
+            "DATABASE ERROR:",
+            error
+        )
+
+        return {
+            "success": False,
+            "message": (
+                "Unable to save document information."
+            )
+        }
+
+    # ==================================================
+    # SUCCESS LOGS
+    # ==================================================
 
     print(
         "DOCUMENTS SAVED SUCCESSFULLY"
@@ -366,7 +473,18 @@ async def upload_documents(
         user.status
     )
 
-    print("======================================")
+    print(
+        "UPLOADED FILES:",
+        uploaded_files
+    )
+
+    print(
+        "======================================"
+    )
+
+    # ==================================================
+    # RESPONSE
+    # ==================================================
 
     return {
 
@@ -380,6 +498,9 @@ async def upload_documents(
 
         "document_id":
             document.id,
+
+        "status":
+            user.status,
 
         "uploaded_files":
             uploaded_files
