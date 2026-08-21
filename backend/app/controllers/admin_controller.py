@@ -6,7 +6,10 @@ from fastapi import (
 
 from sqlalchemy.orm import Session
 
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import (
+    HTTPBearer,
+    HTTPAuthorizationCredentials
+)
 
 from app.dependencies import get_db
 
@@ -20,6 +23,10 @@ from app.services.admin_auth_service import (
     verify_admin_token
 )
 
+
+# =========================================================
+# ADMIN ROUTER
+# =========================================================
 
 router = APIRouter(
     prefix="/admin",
@@ -47,9 +54,8 @@ def admin_login(
 
     password = request.password
 
-
     # -----------------------------------------------------
-    # VERIFY ADMIN
+    # VERIFY ADMIN CREDENTIALS
     # -----------------------------------------------------
 
     if not verify_admin_credentials(
@@ -62,13 +68,11 @@ def admin_login(
             detail="Invalid admin email or password."
         )
 
-
     # -----------------------------------------------------
-    # CREATE TOKEN
+    # CREATE ADMIN JWT
     # -----------------------------------------------------
 
     access_token = create_admin_token()
-
 
     # -----------------------------------------------------
     # RESPONSE
@@ -96,7 +100,7 @@ def admin_login(
 
 
 # =========================================================
-# ADMIN AUTHENTICATION DEPENDENCY
+# ADMIN AUTHENTICATION
 # =========================================================
 
 def get_current_admin(
@@ -107,11 +111,9 @@ def get_current_admin(
 
     token = credentials.credentials
 
-
     admin = verify_admin_token(
         token
     )
-
 
     if not admin:
 
@@ -120,12 +122,11 @@ def get_current_admin(
             detail="Invalid or expired admin token."
         )
 
-
     return admin
 
 
 # =========================================================
-# ADMIN PROFILE / TEST ENDPOINT
+# ADMIN PROFILE
 # =========================================================
 
 @router.get("/me")
@@ -165,7 +166,6 @@ def pending_drivers(
 
     )
 
-
     return {
 
         "success": True,
@@ -184,6 +184,18 @@ def pending_drivers(
 
                 "phone_number":
                     user.phone_number,
+
+                "city":
+                    getattr(user, "city", None),
+
+                "state":
+                    getattr(user, "state", None),
+
+                "vehicle_type":
+                    getattr(user, "vehicle_type", None),
+
+                "vehicle_number":
+                    getattr(user, "vehicle_number", None),
 
                 "status":
                     user.status,
@@ -216,7 +228,6 @@ def all_users(
 
     users = db.query(User).all()
 
-
     return {
 
         "success": True,
@@ -236,6 +247,18 @@ def all_users(
                 "phone_number":
                     user.phone_number,
 
+                "city":
+                    getattr(user, "city", None),
+
+                "state":
+                    getattr(user, "state", None),
+
+                "vehicle_type":
+                    getattr(user, "vehicle_type", None),
+
+                "vehicle_number":
+                    getattr(user, "vehicle_number", None),
+
                 "status":
                     user.status,
 
@@ -250,6 +273,224 @@ def all_users(
             for user in users
 
         ]
+
+    }
+
+
+# =========================================================
+# GET APPROVED DRIVERS
+# =========================================================
+
+@router.get("/approved-drivers")
+def approved_drivers(
+    db: Session = Depends(get_db),
+
+    admin=Depends(get_current_admin)
+):
+
+    users = (
+
+        db.query(User)
+
+        .filter(
+            User.status == "approved",
+            User.is_approved == True
+        )
+
+        .all()
+
+    )
+
+    return {
+
+        "success": True,
+
+        "count": len(users),
+
+        "drivers": [
+
+            {
+
+                "id": user.id,
+
+                "full_name": user.full_name,
+
+                "email": user.email,
+
+                "phone_number":
+                    user.phone_number,
+
+                "city":
+                    getattr(user, "city", None),
+
+                "state":
+                    getattr(user, "state", None),
+
+                "vehicle_type":
+                    getattr(user, "vehicle_type", None),
+
+                "vehicle_number":
+                    getattr(user, "vehicle_number", None),
+
+                "status":
+                    user.status,
+
+                "is_approved":
+                    user.is_approved,
+
+                "email_verified":
+                    user.email_verified
+
+            }
+
+            for user in users
+
+        ]
+
+    }
+
+
+# =========================================================
+# GET REJECTED DRIVERS
+# =========================================================
+
+@router.get("/rejected-drivers")
+def rejected_drivers(
+    db: Session = Depends(get_db),
+
+    admin=Depends(get_current_admin)
+):
+
+    users = (
+
+        db.query(User)
+
+        .filter(
+            User.status == "rejected"
+        )
+
+        .all()
+
+    )
+
+    return {
+
+        "success": True,
+
+        "count": len(users),
+
+        "drivers": [
+
+            {
+
+                "id": user.id,
+
+                "full_name": user.full_name,
+
+                "email": user.email,
+
+                "phone_number":
+                    user.phone_number,
+
+                "city":
+                    getattr(user, "city", None),
+
+                "state":
+                    getattr(user, "state", None),
+
+                "vehicle_type":
+                    getattr(user, "vehicle_type", None),
+
+                "vehicle_number":
+                    getattr(user, "vehicle_number", None),
+
+                "status":
+                    user.status,
+
+                "is_approved":
+                    user.is_approved,
+
+                "email_verified":
+                    user.email_verified
+
+            }
+
+            for user in users
+
+        ]
+
+    }
+
+
+# =========================================================
+# GET DRIVER BY ID
+# =========================================================
+
+@router.get("/driver/{user_id}")
+def get_driver(
+    user_id: int,
+
+    db: Session = Depends(get_db),
+
+    admin=Depends(get_current_admin)
+):
+
+    user = (
+
+        db.query(User)
+
+        .filter(
+            User.id == user_id
+        )
+
+        .first()
+
+    )
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Driver not found."
+        )
+
+    return {
+
+        "success": True,
+
+        "driver": {
+
+            "id": user.id,
+
+            "full_name": user.full_name,
+
+            "email": user.email,
+
+            "phone_number":
+                user.phone_number,
+
+            "city":
+                getattr(user, "city", None),
+
+            "state":
+                getattr(user, "state", None),
+
+            "vehicle_type":
+                getattr(user, "vehicle_type", None),
+
+            "vehicle_number":
+                getattr(user, "vehicle_number", None),
+
+            "status":
+                user.status,
+
+            "is_approved":
+                user.is_approved,
+
+            "email_verified":
+                user.email_verified
+
+        }
 
     }
 
@@ -279,27 +520,24 @@ def approve_driver(
 
     )
 
-
     if not user:
 
         raise HTTPException(
-
             status_code=404,
-
             detail="Driver not found."
-
         )
 
+    # -----------------------------------------------------
+    # UPDATE DRIVER STATUS
+    # -----------------------------------------------------
 
     user.status = "approved"
 
     user.is_approved = True
 
-
     db.commit()
 
     db.refresh(user)
-
 
     return {
 
@@ -345,27 +583,24 @@ def reject_driver(
 
     )
 
-
     if not user:
 
         raise HTTPException(
-
             status_code=404,
-
             detail="Driver not found."
-
         )
 
+    # -----------------------------------------------------
+    # UPDATE DRIVER STATUS
+    # -----------------------------------------------------
 
     user.status = "rejected"
 
     user.is_approved = False
 
-
     db.commit()
 
     db.refresh(user)
-
 
     return {
 
