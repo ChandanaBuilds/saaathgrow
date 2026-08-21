@@ -5,6 +5,7 @@ from sqlalchemy import inspect, text
 
 from app.database import Base, engine
 
+
 # =========================================================
 # IMPORT ALL MODELS
 # =========================================================
@@ -21,18 +22,19 @@ from app.models.wallet import Wallet
 # DATABASE SETUP
 # =========================================================
 
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(
+    bind=engine
+)
 
 
 # =========================================================
-# SQLITE MIGRATION
+# DATABASE MIGRATION
 # =========================================================
 #
-# Existing SQLite databases are NOT automatically updated
-# when a new column is added to a SQLAlchemy model.
+# This checks whether the users table contains
+# email_verified.
 #
-# We therefore check for email_verified and add it if
-# the existing users table does not have it.
+# This is mainly useful for existing databases.
 # =========================================================
 
 def migrate_database():
@@ -41,42 +43,57 @@ def migrate_database():
 
     tables = inspector.get_table_names()
 
-    # -----------------------------------------------------
-    # Make sure users table exists
-    # -----------------------------------------------------
+
+    # =====================================================
+    # USERS TABLE
+    # =====================================================
 
     if "users" in tables:
 
         columns = [
             column["name"]
-            for column in inspector.get_columns("users")
+            for column in inspector.get_columns(
+                "users"
+            )
         ]
 
+
         # -------------------------------------------------
-        # Add email_verified to existing users table
+        # Add email_verified if missing
         # -------------------------------------------------
 
         if "email_verified" not in columns:
 
             print(
-                "Adding email_verified column to users table..."
+                "Adding email_verified column "
+                "to users table..."
             )
 
-            with engine.begin() as connection:
+            try:
 
-                connection.execute(
-                    text(
-                        """
-                        ALTER TABLE users
-                        ADD COLUMN email_verified BOOLEAN
-                        DEFAULT 0
-                        """
+                with engine.begin() as connection:
+
+                    connection.execute(
+                        text(
+                            """
+                            ALTER TABLE users
+                            ADD COLUMN email_verified
+                            BOOLEAN DEFAULT FALSE
+                            """
+                        )
                     )
+
+                print(
+                    "email_verified column added "
+                    "successfully."
                 )
 
-            print(
-                "email_verified column added successfully."
-            )
+            except Exception as error:
+
+                print(
+                    "Migration error:",
+                    error
+                )
 
         else:
 
@@ -84,13 +101,15 @@ def migrate_database():
                 "email_verified column already exists."
             )
 
-    # -----------------------------------------------------
-    # Make sure EmailOTP table exists
-    # -----------------------------------------------------
+
+    # =====================================================
+    # EMAIL OTP TABLE
+    # =====================================================
 
     inspector = inspect(engine)
 
     tables = inspector.get_table_names()
+
 
     if "email_otps" not in tables:
 
@@ -108,7 +127,10 @@ def migrate_database():
         )
 
 
-# Run migration
+# =========================================================
+# RUN DATABASE MIGRATION
+# =========================================================
+
 migrate_database()
 
 
@@ -117,8 +139,11 @@ migrate_database()
 # =========================================================
 
 app = FastAPI(
+
     title="Saath Groww Delivery API",
-    version="1.0.0"
+
+    version="2.0.0"
+
 )
 
 
@@ -127,6 +152,10 @@ app = FastAPI(
 # =========================================================
 
 origins = [
+
+    # ---------------------------------------------
+    # Local development
+    # ---------------------------------------------
 
     "http://localhost:8081",
 
@@ -179,13 +208,25 @@ from app.controllers.wallet_controller import (
 )
 
 
-app.include_router(auth_router)
+# =========================================================
+# REGISTER ROUTERS
+# =========================================================
 
-app.include_router(admin_router)
+app.include_router(
+    auth_router
+)
 
-app.include_router(order_router)
+app.include_router(
+    admin_router
+)
 
-app.include_router(wallet_router)
+app.include_router(
+    order_router
+)
+
+app.include_router(
+    wallet_router
+)
 
 
 # =========================================================
@@ -196,7 +237,13 @@ app.include_router(wallet_router)
 def health():
 
     return {
+
         "success": True,
-        "message": "Saath Groww Backend Running",
-        "version": "2.0.0"
+
+        "message":
+            "Saath Groww Backend Running",
+
+        "version":
+            "2.0.0"
+
     }
