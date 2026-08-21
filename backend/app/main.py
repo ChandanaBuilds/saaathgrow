@@ -5,7 +5,11 @@ from sqlalchemy import inspect, text
 
 from app.database import Base, engine
 
-# Models
+
+# =========================================================
+# IMPORT ALL MODELS
+# =========================================================
+
 from app.models.user import User
 from app.models.otp import OTP
 from app.models.email_otp import EmailOTP
@@ -15,18 +19,26 @@ from app.models.wallet import Wallet
 
 
 # =========================================================
-# DATABASE
+# DATABASE SETUP
 # =========================================================
 
 Base.metadata.create_all(bind=engine)
 
 
+# =========================================================
+# DATABASE MIGRATION
+# =========================================================
+
 def migrate_database():
 
     inspector = inspect(engine)
+
     tables = inspector.get_table_names()
 
+    # =====================================================
     # USERS TABLE
+    # =====================================================
+
     if "users" in tables:
 
         columns = [
@@ -36,7 +48,9 @@ def migrate_database():
 
         if "email_verified" not in columns:
 
-            print("Adding email_verified column...")
+            print(
+                "Adding email_verified column to users table..."
+            )
 
             try:
 
@@ -52,74 +66,139 @@ def migrate_database():
                         )
                     )
 
-                print("email_verified column added.")
+                print(
+                    "email_verified column added successfully."
+                )
 
             except Exception as error:
 
-                print("Migration error:", error)
+                print(
+                    "Migration error:",
+                    error
+                )
 
         else:
 
-            print("email_verified already exists.")
+            print(
+                "email_verified column already exists."
+            )
 
+    # =====================================================
     # EMAIL OTP TABLE
+    # =====================================================
+
     inspector = inspect(engine)
+
     tables = inspector.get_table_names()
 
     if "email_otps" not in tables:
 
-        print("Creating email_otps table...")
+        print(
+            "Creating email_otps table..."
+        )
 
         EmailOTP.__table__.create(
             bind=engine,
             checkfirst=True
         )
 
-        print("email_otps table created.")
+        print(
+            "email_otps table created successfully."
+        )
 
+
+# =========================================================
+# RUN DATABASE MIGRATION
+# =========================================================
 
 migrate_database()
 
 
 # =========================================================
-# FASTAPI
+# CREATE FASTAPI APPLICATION
 # =========================================================
 
 app = FastAPI(
+
     title="Saath Groww Delivery API",
+
     version="2.0.0"
+
 )
 
 
 # =========================================================
-# CORS
+# CORS CONFIGURATION
+# =========================================================
+#
+# Admin Dashboard:
+# http://localhost:8081
+#
+# Expo:
+# http://localhost:8082
+#
+# Other local development:
+# http://localhost:3000
+#
+# IMPORTANT:
+# Authorization header is used by the Admin Dashboard.
+# Therefore allow_headers must include Authorization.
 # =========================================================
 
 app.add_middleware(
+
     CORSMiddleware,
 
     allow_origins=[
+
+        # Expo / React Native Web
         "http://localhost:8081",
         "http://localhost:8082",
+
+        # Other local frontend
         "http://localhost:3000",
 
+        # 127.0.0.1 variants
         "http://127.0.0.1:8081",
         "http://127.0.0.1:8082",
         "http://127.0.0.1:3000",
+
     ],
 
     allow_credentials=True,
 
-    allow_methods=["*"],
+    allow_methods=[
 
-    allow_headers=["*"],
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
 
-    expose_headers=["*"],
+    ],
+
+    allow_headers=[
+
+        "Accept",
+        "Authorization",
+        "Content-Type",
+        "Origin",
+        "X-Requested-With",
+
+    ],
+
+    expose_headers=[
+
+        "Content-Length",
+
+    ],
+
 )
 
 
 # =========================================================
-# ROUTERS
+# IMPORT ROUTERS
 # =========================================================
 
 from app.controllers.auth_controller import (
@@ -139,10 +218,25 @@ from app.controllers.wallet_controller import (
 )
 
 
-app.include_router(auth_router)
-app.include_router(admin_router)
-app.include_router(order_router)
-app.include_router(wallet_router)
+# =========================================================
+# REGISTER ROUTERS
+# =========================================================
+
+app.include_router(
+    auth_router
+)
+
+app.include_router(
+    admin_router
+)
+
+app.include_router(
+    order_router
+)
+
+app.include_router(
+    wallet_router
+)
 
 
 # =========================================================
@@ -153,7 +247,13 @@ app.include_router(wallet_router)
 def health():
 
     return {
+
         "success": True,
-        "message": "Saath Groww Backend Running",
-        "version": "2.0.0"
+
+        "message":
+            "Saath Groww Backend Running",
+
+        "version":
+            "2.0.0"
+
     }
