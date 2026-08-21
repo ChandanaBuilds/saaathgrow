@@ -12,8 +12,7 @@ import {
     View,
 } from "react-native";
 
-const API_URL = "https://saaathgroww.onrender.com";
-
+const API_URL = "https://saaathgrow.onrender.com";
 type DriverTab = "pending" | "approved" | "rejected" | "all";
 
 interface AdminUser {
