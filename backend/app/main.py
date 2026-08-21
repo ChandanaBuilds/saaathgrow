@@ -125,63 +125,31 @@ migrate_database()
 # =========================================================
 
 app = FastAPI(
-
     title="Saath Groww Delivery API",
-
     version="2.0.0"
-
 )
 
 
 # =========================================================
 # CORS CONFIGURATION
 # =========================================================
-#
-# IMPORTANT:
-# Only ONE CORSMiddleware should be registered.
-#
-# This allows:
-#
-# localhost:8081
-# localhost:8082
-# localhost:3000
-#
-# 127.0.0.1:8081
-# 127.0.0.1:8082
-# 127.0.0.1:3000
-#
-# The regex additionally allows any localhost/127.0.0.1
-# development port.
-# =========================================================
-
-allowed_origins = [
-
-    "http://localhost:8081",
-
-    "http://localhost:8082",
-
-    "http://localhost:3000",
-
-    "http://127.0.0.1:8081",
-
-    "http://127.0.0.1:8082",
-
-    "http://127.0.0.1:3000",
-
-]
-
 
 app.add_middleware(
-
     CORSMiddleware,
 
-    allow_origins=allowed_origins,
+    allow_origins=[
+        # Expo / React Native Web
+        "http://localhost:8081",
+        "http://localhost:8082",
 
-    allow_origin_regex=(
-        r"^https?://"
-        r"(localhost|127\.0\.0\.1)"
-        r"(:\d+)?$"
-    ),
+        # React / Next.js
+        "http://localhost:3000",
+
+        # 127.0.0.1
+        "http://127.0.0.1:8081",
+        "http://127.0.0.1:8082",
+        "http://127.0.0.1:3000",
+    ],
 
     allow_credentials=True,
 
@@ -190,7 +158,6 @@ app.add_middleware(
     allow_headers=["*"],
 
     expose_headers=["*"],
-
 )
 
 
@@ -244,13 +211,7 @@ app.include_router(
 def health():
 
     return {
-
         "success": True,
-
-        "message":
-            "Saath Groww Backend Running",
-
-        "version":
-            "2.0.0"
-
+        "message": "Saath Groww Backend Running",
+        "version": "2.0.0"
     }

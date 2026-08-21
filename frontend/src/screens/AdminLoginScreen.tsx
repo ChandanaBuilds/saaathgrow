@@ -47,244 +47,131 @@ export default function AdminLoginScreen({
     */
 
     const handleLogin = async () => {
-
-        // -----------------------------------------------
-        // Validate email
-        // -----------------------------------------------
-
         if (!email.trim()) {
-
-            Alert.alert(
-                "Required",
-                "Please enter admin email."
-            );
-
+            Alert.alert("Required", "Please enter admin email.");
             return;
         }
-
-
-        // -----------------------------------------------
-        // Validate password
-        // -----------------------------------------------
 
         if (!password.trim()) {
-
-            Alert.alert(
-                "Required",
-                "Please enter admin password."
-            );
-
+            Alert.alert("Required", "Please enter admin password.");
             return;
         }
 
-
         try {
-
             setLoading(true);
 
+            const API_URL =
+                "https://saaathgrow.onrender.com";
 
-            console.log(
-                "ADMIN LOGIN REQUEST"
-            );
+            const loginUrl =
+                `${API_URL}/admin/login`;
 
-            console.log(
-                "URL:",
-                `${API_URL}/admin/login`
-            );
-
-
-            // -------------------------------------------
-            // API REQUEST
-            // -------------------------------------------
+            console.log("=================================");
+            console.log("ADMIN LOGIN REQUEST");
+            console.log("URL:", loginUrl);
+            console.log("EMAIL:", email.trim());
+            console.log("=================================");
 
             const response = await fetch(
-
-                `${API_URL}/admin/login`,
-
+                loginUrl,
                 {
                     method: "POST",
 
                     headers: {
-
-                        "Content-Type":
-                            "application/json",
-
-                        "Accept":
-                            "application/json",
-
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
                     },
 
                     body: JSON.stringify({
-
-                        email:
-                            email.trim(),
-
-                        password:
-                            password,
-
+                        email: email.trim(),
+                        password: password,
                     }),
-
                 }
-
             );
-
 
             console.log(
                 "ADMIN LOGIN STATUS:",
                 response.status
             );
 
-
-            // -------------------------------------------
-            // Read response safely
-            // -------------------------------------------
-
             const responseText =
                 await response.text();
-
 
             console.log(
                 "ADMIN LOGIN RAW RESPONSE:",
                 responseText
             );
 
-
-            let data: any = null;
-
+            let data: any = {};
 
             try {
-
-                data =
-                    responseText
-                        ? JSON.parse(responseText)
-                        : null;
-
-            } catch (jsonError) {
-
-                console.log(
-                    "Response was not JSON:",
-                    jsonError
-                );
-
+                data = responseText
+                    ? JSON.parse(responseText)
+                    : {};
+            } catch {
+                data = {
+                    message: responseText
+                };
             }
-
-
-            // -------------------------------------------
-            // API ERROR
-            // -------------------------------------------
 
             if (!response.ok) {
 
-                const errorMessage =
-
-                    data?.detail ||
-
-                    data?.message ||
-
-                    `Login failed. Server returned ${response.status}.`;
-
-
                 throw new Error(
-                    errorMessage
+                    data?.detail ||
+                    data?.message ||
+                    `Login failed with status ${response.status}`
                 );
-
             }
-
-
-            // -------------------------------------------
-            // SUCCESS
-            // -------------------------------------------
 
             console.log(
                 "ADMIN LOGIN SUCCESS:",
                 data
             );
 
-
             Alert.alert(
-
                 "Login Successful",
-
-                "Welcome to Saath Groww Admin Panel.",
-
-                [
-
-                    {
-                        text: "Continue",
-
-                        onPress: () => {
-
-                            /*
-                            =================================================
-                            ADMIN DASHBOARD
-                            =================================================
-
-                            We will enable this after creating
-                            AdminDashboardScreen.
-
-                            Example:
-
-                            navigation.replace(
-                                "AdminDashboard"
-                            );
-
-                            =================================================
-                            */
-
-                        },
-
-                    },
-
-                ]
-
+                "Welcome to Saath Groww Admin Panel."
             );
 
+            /*
+             * Later we will do:
+             *
+             * navigation.replace("AdminDashboard");
+             *
+             * after creating the admin dashboard.
+             */
 
         } catch (error: any) {
 
-            console.error(
+            console.log(
+                "================================="
+            );
+
+            console.log(
                 "ADMIN LOGIN ERROR:",
                 error
             );
 
+            console.log(
+                "ERROR MESSAGE:",
+                error?.message
+            );
 
-            // -------------------------------------------
-            // Network / CORS error
-            // -------------------------------------------
+            console.log(
+                "================================="
+            );
 
-            if (
-                error?.message ===
-                "Network request failed"
-            ) {
-
-                Alert.alert(
-
-                    "Connection Error",
-
-                    "Unable to connect to the Saath Groww server. Please make sure the backend is deployed and CORS is configured correctly."
-
-                );
-
-            } else {
-
-                Alert.alert(
-
-                    "Login Failed",
-
-                    error?.message ||
-                    "Unable to login. Please try again."
-
-                );
-
-            }
-
+            Alert.alert(
+                "Login Failed",
+                error?.message ||
+                "Unable to connect to the server."
+            );
 
         } finally {
 
             setLoading(false);
 
         }
-
     };
 
 
