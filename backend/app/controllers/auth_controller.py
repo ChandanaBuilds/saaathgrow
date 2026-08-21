@@ -1164,26 +1164,25 @@ def old_phone_otp_endpoint():
 def upload_documents(
     user_id: int = Form(...),
 
-    profile_photo: UploadFile = File(None),
+    profile_photo: UploadFile | None = File(None),
 
-    aadhaar_front: UploadFile = File(None),
-    aadhaar_back: UploadFile = File(None),
+    aadhaar_front: UploadFile | None = File(None),
+    aadhaar_back: UploadFile | None = File(None),
 
-    pan_card: UploadFile = File(None),
+    pan_card: UploadFile | None = File(None),
 
-    driving_license_front: UploadFile = File(None),
-    driving_license_back: UploadFile = File(None),
+    driving_license_front: UploadFile | None = File(None),
+    driving_license_back: UploadFile | None = File(None),
 
-    vehicle_rc: UploadFile = File(None),
-
-    insurance: UploadFile = File(None),
+    vehicle_rc: UploadFile | None = File(None),
+    insurance: UploadFile | None = File(None),
 
     db: Session = Depends(get_db)
 ):
 
-    # -----------------------------------------------------
-    # CHECK USER
-    # -----------------------------------------------------
+    # =====================================================
+    # FIND USER
+    # =====================================================
 
     user = (
         db.query(User)
@@ -1199,9 +1198,37 @@ def upload_documents(
         }
 
 
-    # -----------------------------------------------------
-    # CREATE UPLOAD DIRECTORY
-    # -----------------------------------------------------
+    # =====================================================
+    # REQUIRED DOCUMENT VALIDATION
+    # =====================================================
+
+    if not aadhaar_front:
+
+        return {
+            "success": False,
+            "message": "Aadhaar Card is required."
+        }
+
+
+    if not pan_card:
+
+        return {
+            "success": False,
+            "message": "PAN Card is required."
+        }
+
+
+    if not driving_license_front:
+
+        return {
+            "success": False,
+            "message": "Driving License is required."
+        }
+
+
+    # =====================================================
+    # UPLOAD DIRECTORY
+    # =====================================================
 
     upload_directory = "uploads"
 
@@ -1211,18 +1238,18 @@ def upload_documents(
     )
 
 
-    # -----------------------------------------------------
+    # =====================================================
     # CREATE DOCUMENT RECORD
-    # -----------------------------------------------------
+    # =====================================================
 
     document = Document(
         user_id=user_id
     )
 
 
-    # -----------------------------------------------------
-    # FILES
-    # -----------------------------------------------------
+    # =====================================================
+    # FILE LIST
+    # =====================================================
 
     files = {
 
@@ -1252,9 +1279,9 @@ def upload_documents(
     }
 
 
-    # -----------------------------------------------------
+    # =====================================================
     # SAVE FILES
-    # -----------------------------------------------------
+    # =====================================================
 
     for field_name, file in files.items():
 
@@ -1262,20 +1289,32 @@ def upload_documents(
             continue
 
 
-        # Remove unsafe filename characters
-        filename = os.path.basename(
-            file.filename
-        )
-
-
-        # Create unique filename
-        file_path = os.path.join(
-            upload_directory,
-            f"{user_id}_{field_name}_{filename}"
-        )
-
-
         try:
+
+            # ---------------------------------------------
+            # SAFE FILE NAME
+            # ---------------------------------------------
+
+            filename = os.path.basename(
+                file.filename or "document"
+            )
+
+
+            # ---------------------------------------------
+            # UNIQUE FILE NAME
+            # ---------------------------------------------
+
+            file_path = os.path.join(
+
+                upload_directory,
+
+                f"{user_id}_{field_name}_{filename}"
+            )
+
+
+            # ---------------------------------------------
+            # WRITE FILE
+            # ---------------------------------------------
 
             with open(
                 file_path,
@@ -1288,7 +1327,10 @@ def upload_documents(
                 )
 
 
-            # Save path in database
+            # ---------------------------------------------
+            # SAVE PATH IN DATABASE
+            # ---------------------------------------------
+
             setattr(
                 document,
                 field_name,
@@ -1303,6 +1345,8 @@ def upload_documents(
                 error
             )
 
+            db.rollback()
+
             return {
 
                 "success": False,
@@ -1312,28 +1356,51 @@ def upload_documents(
             }
 
 
-    # -----------------------------------------------------
+    # =====================================================
     # SAVE DOCUMENT RECORD
-    # -----------------------------------------------------
+    # =====================================================
 
     db.add(document)
 
 
-    # -----------------------------------------------------
+    # =====================================================
     # UPDATE USER STATUS
-    # -----------------------------------------------------
+    # =====================================================
 
     user.status = "pending_verification"
 
 
-    db.commit()
+    # =====================================================
+    # COMMIT
+    # =====================================================
 
-    db.refresh(document)
+    try:
+
+        db.commit()
+
+        db.refresh(document)
+
+    except Exception as error:
+
+        db.rollback()
+
+        print(
+            "DOCUMENT DATABASE ERROR:",
+            error
+        )
+
+        return {
+
+            "success": False,
+
+            "message":
+                "Unable to save document information."
+        }
 
 
-    # -----------------------------------------------------
+    # =====================================================
     # SUCCESS
-    # -----------------------------------------------------
+    # =====================================================
 
     return {
 

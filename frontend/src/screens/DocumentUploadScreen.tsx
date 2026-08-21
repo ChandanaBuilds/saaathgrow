@@ -7,6 +7,7 @@ import {
     StyleSheet,
     ActivityIndicator,
     ScrollView,
+    Platform,
 } from "react-native";
 
 import * as DocumentPicker from "expo-document-picker";
@@ -18,21 +19,27 @@ const API_URL =
     "https://saaathgrow.onrender.com";
 
 
-
-
 export default function DocumentUploadScreen({
     navigation,
     route,
 }: any) {
 
+    // =====================================================
+    // USER DATA
+    // =====================================================
+
     const userId =
         route?.params?.userId;
 
-    console.log("DOCUMENT SCREEN USER ID:", userId);
+    console.log(
+        "DOCUMENT SCREEN USER ID:",
+        userId
+    );
 
-    const profile =
-        route?.params?.profile;
 
+    // =====================================================
+    // DOCUMENT STATE
+    // =====================================================
 
     const [aadhaar, setAadhaar] =
         useState<any>(null);
@@ -42,6 +49,11 @@ export default function DocumentUploadScreen({
 
     const [license, setLicense] =
         useState<any>(null);
+
+
+    // =====================================================
+    // UI STATE
+    // =====================================================
 
     const [loading, setLoading] =
         useState(false);
@@ -60,6 +72,9 @@ export default function DocumentUploadScreen({
 
         try {
 
+            setErrorMessage("");
+
+
             const result =
                 await DocumentPicker.getDocumentAsync({
 
@@ -70,18 +85,31 @@ export default function DocumentUploadScreen({
 
                     copyToCacheDirectory: true,
 
+                    multiple: false,
                 });
 
 
-            if (!result.canceled) {
-
-                setter(
-                    result.assets[0]
-                );
-
-                setErrorMessage("");
-
+            if (
+                result.canceled
+            ) {
+                return;
             }
+
+
+            const selectedFile =
+                result.assets[0];
+
+
+            console.log(
+                "SELECTED FILE:",
+                selectedFile
+            );
+
+
+            setter(
+                selectedFile
+            );
+
 
         } catch (error) {
 
@@ -90,8 +118,83 @@ export default function DocumentUploadScreen({
                 error
             );
 
+
+            setErrorMessage(
+                "Unable to select the document. Please try again."
+            );
+        }
+    };
+
+
+    // =====================================================
+    // APPEND FILE TO FORMDATA
+    // =====================================================
+
+    const appendFileToFormData = async (
+        formData: FormData,
+        fieldName: string,
+        file: any
+    ) => {
+
+        if (!file) {
+            return;
         }
 
+
+        // =================================================
+        // WEB
+        // =================================================
+
+        if (Platform.OS === "web") {
+
+            const response =
+                await fetch(file.uri);
+
+            const blob =
+                await response.blob();
+
+
+            const webFile =
+                new File(
+                    [blob],
+                    file.name ||
+                    `${fieldName}.pdf`,
+                    {
+                        type:
+                            file.mimeType ||
+                            blob.type ||
+                            "application/octet-stream",
+                    }
+                );
+
+
+            formData.append(
+                fieldName,
+                webFile
+            );
+
+            return;
+        }
+
+
+        // =================================================
+        // ANDROID / IOS
+        // =================================================
+
+        formData.append(
+            fieldName,
+            {
+                uri: file.uri,
+
+                name:
+                    file.name ||
+                    `${fieldName}.pdf`,
+
+                type:
+                    file.mimeType ||
+                    "application/octet-stream",
+            } as any
+        );
     };
 
 
@@ -104,9 +207,23 @@ export default function DocumentUploadScreen({
         setErrorMessage("");
 
 
-        // -------------------------------------------------
+        // =================================================
+        // USER ID CHECK
+        // =================================================
+
+        if (!userId) {
+
+            setErrorMessage(
+                "User information is missing. Please login again."
+            );
+
+            return;
+        }
+
+
+        // =================================================
         // REQUIRED DOCUMENTS
-        // -------------------------------------------------
+        // =================================================
 
         if (!aadhaar) {
 
@@ -143,9 +260,17 @@ export default function DocumentUploadScreen({
             setLoading(true);
 
 
+            // =================================================
+            // CREATE FORMDATA
+            // =================================================
+
             const formData =
                 new FormData();
 
+
+            // =================================================
+            // USER ID
+            // =================================================
 
             formData.append(
                 "user_id",
@@ -157,17 +282,10 @@ export default function DocumentUploadScreen({
             // AADHAAR
             // =================================================
 
-            formData.append(
+            await appendFileToFormData(
+                formData,
                 "aadhaar_front",
-                {
-                    uri: aadhaar.uri,
-                    name:
-                        aadhaar.name ||
-                        "aadhaar.jpg",
-                    type:
-                        aadhaar.mimeType ||
-                        "image/jpeg",
-                } as any
+                aadhaar
             );
 
 
@@ -175,43 +293,73 @@ export default function DocumentUploadScreen({
             // PAN
             // =================================================
 
-            formData.append(
+            await appendFileToFormData(
+                formData,
                 "pan_card",
-                {
-                    uri: pan.uri,
-                    name:
-                        pan.name ||
-                        "pan.jpg",
-                    type:
-                        pan.mimeType ||
-                        "image/jpeg",
-                } as any
+                pan
             );
 
 
             // =================================================
-            // LICENSE
+            // DRIVING LICENSE
             // =================================================
 
-            formData.append(
+            await appendFileToFormData(
+                formData,
                 "driving_license_front",
-                {
-                    uri: license.uri,
-                    name:
-                        license.name ||
-                        "license.jpg",
-                    type:
-                        license.mimeType ||
-                        "image/jpeg",
-                } as any
+                license
             );
 
 
             console.log(
-                "UPLOADING DOCUMENTS FOR USER:",
+                "================================"
+            );
+
+            console.log(
+                "UPLOADING DOCUMENTS"
+            );
+
+            console.log(
+                "USER ID:",
                 userId
             );
 
+            console.log(
+                "AADHAAR:",
+                aadhaar.name
+            );
+
+            console.log(
+                "PAN:",
+                pan.name
+            );
+
+            console.log(
+                "LICENSE:",
+                license.name
+            );
+
+            console.log(
+                "PLATFORM:",
+                Platform.OS
+            );
+
+            console.log(
+                "================================"
+            );
+
+
+            // =================================================
+            // API REQUEST
+            // =================================================
+            //
+            // IMPORTANT:
+            // Do NOT manually set Content-Type.
+            //
+            // Axios/browser will automatically create
+            // the correct multipart boundary.
+            //
+            // =================================================
 
             const response =
                 await axios.post(
@@ -221,14 +369,8 @@ export default function DocumentUploadScreen({
                     formData,
 
                     {
-                        headers: {
-                            "Content-Type":
-                                "multipart/form-data",
-                        },
-
                         timeout: 60000,
                     }
-
                 );
 
 
@@ -238,25 +380,40 @@ export default function DocumentUploadScreen({
             );
 
 
+            // =================================================
+            // SUCCESS
+            // =================================================
+
             if (
-                response.data.success
+                response.data?.success
             ) {
+
+                setErrorMessage("");
+
 
                 navigation.replace(
                     "VerificationPending",
                     {
-                        userId: userId,
+                        userId:
+                            userId,
                     }
                 );
 
-            } else {
 
-                setErrorMessage(
-                    response.data.message ||
-                    "Unable to upload documents."
-                );
-
+                return;
             }
+
+
+            // =================================================
+            // SERVER FAILURE
+            // =================================================
+
+            setErrorMessage(
+
+                response.data?.message ||
+
+                "Unable to upload documents. Please try again."
+            );
 
 
         } catch (error: any) {
@@ -268,32 +425,72 @@ export default function DocumentUploadScreen({
 
 
             console.log(
-                "STATUS:",
+                "UPLOAD STATUS:",
                 error.response?.status
             );
 
 
             console.log(
-                "DATA:",
+                "UPLOAD DATA:",
                 error.response?.data
             );
 
+
+            // =================================================
+            // 422 VALIDATION ERROR
+            // =================================================
+
+            if (
+                error.response?.status === 422
+            ) {
+
+                const detail =
+                    error.response?.data?.detail;
+
+
+                if (
+                    Array.isArray(detail)
+                ) {
+
+                    const messages =
+                        detail.map(
+                            (item: any) =>
+                                item.msg
+                        );
+
+
+                    setErrorMessage(
+                        messages.join("\n")
+                    );
+
+                } else {
+
+                    setErrorMessage(
+                        "Some document information is missing. Please select all three documents again."
+                    );
+                }
+
+
+                return;
+            }
+
+
+            // =================================================
+            // OTHER ERROR
+            // =================================================
 
             setErrorMessage(
 
                 error.response?.data?.message ||
 
                 "Unable to upload documents. Please try again."
-
             );
 
 
         } finally {
 
             setLoading(false);
-
         }
-
     };
 
 
@@ -312,62 +509,90 @@ export default function DocumentUploadScreen({
         return (
 
             <TouchableOpacity
+
                 style={[
                     styles.documentCard,
+
                     file &&
                     styles.documentCardUploaded,
                 ]}
+
                 onPress={onPress}
+
                 activeOpacity={0.8}
             >
 
                 <View
                     style={[
                         styles.documentIcon,
+
                         file &&
                         styles.documentIconUploaded,
                     ]}
                 >
 
-                    <Text style={styles.documentIconText}>
-                        {file ? "✓" : icon}
-                    </Text>
-
-                </View>
-
-
-                <View style={styles.documentInfo}>
-
-                    <Text style={styles.documentTitle}>
-                        {title}
-                    </Text>
-
-
                     <Text
-                        style={styles.documentSubtitle}
-                        numberOfLines={1}
+                        style={
+                            styles.documentIconText
+                        }
                     >
                         {file
-                            ? file.name
-                            : subtitle
+                            ? "✓"
+                            : icon
                         }
                     </Text>
 
                 </View>
 
 
-                <View style={styles.uploadAction}>
+                <View
+                    style={styles.documentInfo}
+                >
 
-                    <Text style={styles.uploadActionText}>
-                        {file ? "Change" : "Upload"}
+                    <Text
+                        style={styles.documentTitle}
+                    >
+                        {title}
+                    </Text>
+
+
+                    <Text
+                        style={styles.documentSubtitle}
+
+                        numberOfLines={1}
+                    >
+
+                        {file
+                            ? file.name
+                            : subtitle
+                        }
+
+                    </Text>
+
+                </View>
+
+
+                <View
+                    style={styles.uploadAction}
+                >
+
+                    <Text
+                        style={
+                            styles.uploadActionText
+                        }
+                    >
+
+                        {file
+                            ? "Change"
+                            : "Upload"
+                        }
+
                     </Text>
 
                 </View>
 
             </TouchableOpacity>
-
         );
-
     };
 
 
@@ -377,29 +602,49 @@ export default function DocumentUploadScreen({
 
     return (
 
-        <View style={styles.screen}>
+        <View
+            style={styles.screen}
+        >
 
             <ScrollView
+
                 style={styles.container}
+
                 contentContainerStyle={
                     styles.contentContainer
                 }
-                showsVerticalScrollIndicator={false}
+
+                showsVerticalScrollIndicator={
+                    false
+                }
             >
 
                 {/* =================================================
                     PROGRESS
                 ================================================= */}
 
-                <View style={styles.progressContainer}>
+                <View
+                    style={
+                        styles.progressContainer
+                    }
+                >
 
-                    <View style={styles.progressStepDone}>
+                    <View
+                        style={
+                            styles.progressStepDone
+                        }
+                    >
 
-                        <Text style={styles.progressDoneText}>
+                        <Text
+                            style={
+                                styles.progressDoneText
+                            }
+                        >
                             ✓
                         </Text>
 
                     </View>
+
 
                     <View
                         style={[
@@ -408,19 +653,42 @@ export default function DocumentUploadScreen({
                         ]}
                     />
 
-                    <View style={styles.progressStepActive}>
 
-                        <Text style={styles.progressNumber}>
+                    <View
+                        style={
+                            styles.progressStepActive
+                        }
+                    >
+
+                        <Text
+                            style={
+                                styles.progressNumber
+                            }
+                        >
                             2
                         </Text>
 
                     </View>
 
-                    <View style={styles.progressLine} />
 
-                    <View style={styles.progressStep}>
+                    <View
+                        style={
+                            styles.progressLine
+                        }
+                    />
 
-                        <Text style={styles.progressNumberInactive}>
+
+                    <View
+                        style={
+                            styles.progressStep
+                        }
+                    >
+
+                        <Text
+                            style={
+                                styles.progressNumberInactive
+                            }
+                        >
                             3
                         </Text>
 
@@ -429,17 +697,35 @@ export default function DocumentUploadScreen({
                 </View>
 
 
-                <View style={styles.progressLabels}>
+                <View
+                    style={
+                        styles.progressLabels
+                    }
+                >
 
-                    <Text style={styles.progressLabelDone}>
+                    <Text
+                        style={
+                            styles.progressLabelDone
+                        }
+                    >
                         Profile
                     </Text>
 
-                    <Text style={styles.progressLabelActive}>
+
+                    <Text
+                        style={
+                            styles.progressLabelActive
+                        }
+                    >
                         Documents
                     </Text>
 
-                    <Text style={styles.progressLabel}>
+
+                    <Text
+                        style={
+                            styles.progressLabel
+                        }
+                    >
                         Verification
                     </Text>
 
@@ -450,23 +736,35 @@ export default function DocumentUploadScreen({
                     HEADER
                 ================================================= */}
 
-                <View style={styles.header}>
+                <View
+                    style={styles.header}
+                >
 
-                    <View style={styles.iconCircle}>
+                    <View
+                        style={styles.iconCircle}
+                    >
 
-                        <Text style={styles.headerIcon}>
+                        <Text
+                            style={
+                                styles.headerIcon
+                            }
+                        >
                             📄
                         </Text>
 
                     </View>
 
 
-                    <Text style={styles.title}>
+                    <Text
+                        style={styles.title}
+                    >
                         Upload Documents
                     </Text>
 
 
-                    <Text style={styles.subtitle}>
+                    <Text
+                        style={styles.subtitle}
+                    >
                         Upload clear copies of your documents
                         for identity and verification.
                     </Text>
@@ -480,13 +778,26 @@ export default function DocumentUploadScreen({
 
                 {errorMessage ? (
 
-                    <View style={styles.errorBox}>
+                    <View
+                        style={
+                            styles.errorBox
+                        }
+                    >
 
-                        <Text style={styles.errorIcon}>
+                        <Text
+                            style={
+                                styles.errorIcon
+                            }
+                        >
                             !
                         </Text>
 
-                        <Text style={styles.errorText}>
+
+                        <Text
+                            style={
+                                styles.errorText
+                            }
+                        >
                             {errorMessage}
                         </Text>
 
@@ -499,12 +810,18 @@ export default function DocumentUploadScreen({
                     DOCUMENTS
                 ================================================= */}
 
-                <Text style={styles.sectionTitle}>
+                <Text
+                    style={styles.sectionTitle}
+                >
                     Required Documents
                 </Text>
 
 
-                <Text style={styles.sectionSubtitle}>
+                <Text
+                    style={
+                        styles.sectionSubtitle
+                    }
+                >
                     Please upload all three documents
                 </Text>
 
@@ -524,7 +841,6 @@ export default function DocumentUploadScreen({
                             setAadhaar
                         )
                     }
-
                 />
 
 
@@ -543,7 +859,6 @@ export default function DocumentUploadScreen({
                             setPan
                         )
                     }
-
                 />
 
 
@@ -562,7 +877,6 @@ export default function DocumentUploadScreen({
                             setLicense
                         )
                     }
-
                 />
 
 
@@ -570,18 +884,28 @@ export default function DocumentUploadScreen({
                     INFO
                 ================================================= */}
 
-                <View style={styles.infoBox}>
+                <View
+                    style={styles.infoBox}
+                >
 
-                    <View style={styles.infoIcon}>
+                    <View
+                        style={styles.infoIcon}
+                    >
 
-                        <Text style={styles.infoIconText}>
+                        <Text
+                            style={
+                                styles.infoIconText
+                            }
+                        >
                             i
                         </Text>
 
                     </View>
 
 
-                    <Text style={styles.infoText}>
+                    <Text
+                        style={styles.infoText}
+                    >
                         Upload clear and readable documents.
                         Accepted formats are JPG, PNG and PDF.
                     </Text>
@@ -590,7 +914,7 @@ export default function DocumentUploadScreen({
 
 
                 {/* =================================================
-                    SUBMIT
+                    CONTINUE BUTTON
                 ================================================= */}
 
                 <TouchableOpacity
@@ -609,7 +933,6 @@ export default function DocumentUploadScreen({
                     disabled={loading}
 
                     activeOpacity={0.85}
-
                 >
 
                     {loading ? (
@@ -622,11 +945,18 @@ export default function DocumentUploadScreen({
 
                         <>
 
-                            <Text style={styles.submitText}>
-                                continue
+                            <Text
+                                style={
+                                    styles.submitText
+                                }
+                            >
+                                Continue
                             </Text>
 
-                            <Text style={styles.arrow}>
+
+                            <Text
+                                style={styles.arrow}
+                            >
                                 →
                             </Text>
 
@@ -637,20 +967,22 @@ export default function DocumentUploadScreen({
                 </TouchableOpacity>
 
 
-                <Text style={styles.bottomText}>
+                <Text
+                    style={styles.bottomText}
+                >
                     Your documents will be securely reviewed
                     by the Saath Groww team.
                 </Text>
 
 
-                <View style={styles.bottomSpace} />
+                <View
+                    style={styles.bottomSpace}
+                />
 
             </ScrollView>
 
         </View>
-
     );
-
 }
 
 
@@ -665,9 +997,11 @@ const styles = StyleSheet.create({
         backgroundColor: "#F7FBF8",
     },
 
+
     container: {
         flex: 1,
     },
+
 
     contentContainer: {
         paddingHorizontal: 20,
@@ -686,6 +1020,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
 
+
     progressStepDone: {
         width: 34,
         height: 34,
@@ -694,6 +1029,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
+
 
     progressStepActive: {
         width: 34,
@@ -704,6 +1040,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
 
+
     progressStep: {
         width: 34,
         height: 34,
@@ -713,21 +1050,25 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
 
+
     progressDoneText: {
         color: "#FFFFFF",
         fontWeight: "900",
         fontSize: 17,
     },
 
+
     progressNumber: {
         color: "#FFFFFF",
         fontWeight: "800",
     },
 
+
     progressNumberInactive: {
         color: "#89968E",
         fontWeight: "700",
     },
+
 
     progressLine: {
         height: 2,
@@ -735,9 +1076,11 @@ const styles = StyleSheet.create({
         backgroundColor: "#DCE7E0",
     },
 
+
     progressLineActive: {
         backgroundColor: "#1DAB52",
     },
+
 
     progressLabels: {
         flexDirection: "row",
@@ -747,17 +1090,20 @@ const styles = StyleSheet.create({
         marginBottom: 25,
     },
 
+
     progressLabelDone: {
         fontSize: 11,
         color: "#1DAB52",
         fontWeight: "600",
     },
 
+
     progressLabelActive: {
         fontSize: 11,
         color: "#1DAB52",
         fontWeight: "700",
     },
+
 
     progressLabel: {
         fontSize: 11,
@@ -774,6 +1120,7 @@ const styles = StyleSheet.create({
         marginBottom: 25,
     },
 
+
     iconCircle: {
         width: 64,
         height: 64,
@@ -786,9 +1133,11 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
 
+
     headerIcon: {
         fontSize: 28,
     },
+
 
     title: {
         fontSize: 28,
@@ -796,6 +1145,7 @@ const styles = StyleSheet.create({
         color: "#17221B",
         textAlign: "center",
     },
+
 
     subtitle: {
         fontSize: 13,
@@ -822,6 +1172,7 @@ const styles = StyleSheet.create({
         marginBottom: 18,
     },
 
+
     errorIcon: {
         width: 22,
         height: 22,
@@ -833,6 +1184,7 @@ const styles = StyleSheet.create({
         fontWeight: "800",
         marginRight: 9,
     },
+
 
     errorText: {
         flex: 1,
@@ -851,6 +1203,7 @@ const styles = StyleSheet.create({
         fontWeight: "800",
         color: "#202923",
     },
+
 
     sectionSubtitle: {
         color: "#89948D",
@@ -876,10 +1229,12 @@ const styles = StyleSheet.create({
         marginBottom: 13,
     },
 
+
     documentCardUploaded: {
         borderColor: "#9DD9B2",
         backgroundColor: "#F5FCF7",
     },
+
 
     documentIcon: {
         width: 48,
@@ -891,18 +1246,22 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
 
+
     documentIconUploaded: {
         backgroundColor: "#DDF5E5",
     },
+
 
     documentIconText: {
         fontSize: 21,
     },
 
+
     documentInfo: {
         flex: 1,
         paddingRight: 8,
     },
+
 
     documentTitle: {
         fontSize: 15,
@@ -910,11 +1269,13 @@ const styles = StyleSheet.create({
         color: "#253029",
     },
 
+
     documentSubtitle: {
         fontSize: 11,
         color: "#8A948D",
         marginTop: 4,
     },
+
 
     uploadAction: {
         paddingHorizontal: 11,
@@ -922,6 +1283,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         backgroundColor: "#E8F8EF",
     },
+
 
     uploadActionText: {
         color: "#1DAB52",
@@ -944,6 +1306,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
 
+
     infoIcon: {
         width: 24,
         height: 24,
@@ -954,11 +1317,13 @@ const styles = StyleSheet.create({
         marginRight: 9,
     },
 
+
     infoIconText: {
         color: "#FFFFFF",
         fontWeight: "900",
         fontSize: 14,
     },
+
 
     infoText: {
         flex: 1,
@@ -969,7 +1334,7 @@ const styles = StyleSheet.create({
 
 
     // =====================================================
-    // SUBMIT
+    // BUTTON
     // =====================================================
 
     submitButton: {
@@ -982,9 +1347,11 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
 
+
     buttonDisabled: {
         opacity: 0.65,
     },
+
 
     submitText: {
         color: "#FFFFFF",
@@ -992,12 +1359,14 @@ const styles = StyleSheet.create({
         fontWeight: "800",
     },
 
+
     arrow: {
         color: "#FFFFFF",
         fontSize: 24,
         marginLeft: 12,
         marginTop: -2,
     },
+
 
     bottomText: {
         textAlign: "center",
@@ -1007,6 +1376,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
         paddingHorizontal: 25,
     },
+
 
     bottomSpace: {
         height: 20,
