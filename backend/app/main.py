@@ -22,7 +22,9 @@ from app.models.wallet import Wallet
 # DATABASE SETUP
 # =========================================================
 
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(
+    bind=engine
+)
 
 
 # =========================================================
@@ -45,6 +47,10 @@ def migrate_database():
             column["name"]
             for column in inspector.get_columns("users")
         ]
+
+        # -------------------------------------------------
+        # Add email_verified if missing
+        # -------------------------------------------------
 
         if "email_verified" not in columns:
 
@@ -82,6 +88,7 @@ def migrate_database():
             print(
                 "email_verified column already exists."
             )
+
 
     # =====================================================
     # EMAIL OTP TABLE
@@ -128,37 +135,29 @@ app = FastAPI(
 
 
 # =========================================================
-# CORS
+# CORS CONFIGURATION
 # =========================================================
 #
-# React Native Web / Expo development:
+# Allows React Native / Expo Web running on localhost
+# and 127.0.0.1 on any development port.
+#
+# Example:
+#
 # http://localhost:8081
+# http://localhost:8082
+# http://localhost:3000
 #
-# Other possible local development ports are also included.
 # =========================================================
-
-origins = [
-
-    # React Native / Expo Web
-    "http://localhost:8081",
-    "http://localhost:8082",
-
-    # React / Next.js development
-    "http://localhost:3000",
-
-    # 127.0.0.1 versions
-    "http://127.0.0.1:8081",
-    "http://127.0.0.1:8082",
-    "http://127.0.0.1:3000",
-
-]
-
 
 app.add_middleware(
 
     CORSMiddleware,
 
-    allow_origins=origins,
+    allow_origin_regex=(
+        r"^https?://"
+        r"(localhost|127\.0\.0\.1)"
+        r"(:\d+)?$"
+    ),
 
     allow_credentials=True,
 
