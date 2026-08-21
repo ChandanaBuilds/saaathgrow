@@ -9,7 +9,7 @@ import {
 } from "@react-navigation/native-stack";
 
 // =========================================================
-// SCREENS
+// AUTH / REGISTRATION SCREENS
 // =========================================================
 
 import SplashScreen
@@ -36,30 +36,28 @@ import DocumentUploadScreen
 import VerificationPendingScreen
   from "./src/screens/VerificationPendingScreen";
 
-import DashboardScreen
-  from "./src/screens/DashboardScreen";
+
+// =========================================================
+// OTHER SCREENS
+// =========================================================
 
 import HomeScreen
   from "./src/screens/HomeScreen";
 
-import OrdersScreen
-  from "./src/screens/OrdersScreen";
-
-import ProfileScreen
-  from "./src/screens/ProfileScreen";
-
-import WalletScreen
-  from "./src/screens/WalletScreen";
-
 import AdminDashboardScreen
   from "./src/screens/AdminDashboardScreen";
 
-// =========================================================
-// ADMIN SCREEN
-// =========================================================
-
 import AdminLoginScreen
   from "./src/screens/AdminLoginScreen";
+
+
+// =========================================================
+// DRIVER NAVIGATION
+// =========================================================
+
+import DriverTabNavigator
+  from "./src/navigation/DriverTabNavigator";
+
 
 // =========================================================
 // NAVIGATION
@@ -89,8 +87,8 @@ export default function App() {
       >
 
         {/* =================================================
-                    SPLASH
-            ================================================= */}
+                        SPLASH
+        ================================================= */}
 
         <Stack.Screen
           name="Splash"
@@ -99,20 +97,18 @@ export default function App() {
 
 
         {/* =================================================
-                    AUTHENTICATION
-            ================================================= */}
+                        USER LOGIN
+        ================================================= */}
 
         <Stack.Screen
           name="Login"
           component={LoginScreen}
         />
-        <Stack.Screen
-          name="AdminDashboard"
-          component={AdminDashboardScreen}
-          options={{
-            headerShown: false,
-          }}
-        />
+
+
+        {/* =================================================
+                        USER REGISTRATION
+        ================================================= */}
 
         <Stack.Screen
           name="Register"
@@ -131,8 +127,8 @@ export default function App() {
 
 
         {/* =================================================
-                    REGISTRATION
-            ================================================= */}
+                        PROFILE CREATION
+        ================================================= */}
 
         <Stack.Screen
           name="CreateProfile"
@@ -146,49 +142,60 @@ export default function App() {
 
         <Stack.Screen
           name="VerificationPending"
-          component={
-            VerificationPendingScreen
-          }
+          component={VerificationPendingScreen}
         />
 
 
         {/* =================================================
-                    MAIN APPLICATION
-            ================================================= */}
+                        DRIVER APPLICATION
+                        
+                        Contains:
+                        
+                        Home
+                        Orders
+                        Wallet
+                        Profile
+        ================================================= */}
+
+        <Stack.Screen
+          name="DriverApp"
+          component={DriverTabNavigator}
+          options={{
+            headerShown: false,
+          }}
+        />
+
+
+        {/* =================================================
+                        NORMAL HOME
+        ================================================= */}
 
         <Stack.Screen
           name="Main"
           component={HomeScreen}
         />
 
-        <Stack.Screen
-          name="Dashboard"
-          component={DashboardScreen}
-        />
-
-        <Stack.Screen
-          name="Orders"
-          component={OrdersScreen}
-        />
-
-        <Stack.Screen
-          name="Wallet"
-          component={WalletScreen}
-        />
-
-        <Stack.Screen
-          name="Profile"
-          component={ProfileScreen}
-        />
-
 
         {/* =================================================
-                    ADMIN
-            ================================================= */}
+                        ADMIN LOGIN
+        ================================================= */}
 
         <Stack.Screen
           name="AdminLogin"
           component={AdminLoginScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+
+
+        {/* =================================================
+                        ADMIN DASHBOARD
+        ================================================= */}
+
+        <Stack.Screen
+          name="AdminDashboard"
+          component={AdminDashboardScreen}
           options={{
             headerShown: false,
           }}

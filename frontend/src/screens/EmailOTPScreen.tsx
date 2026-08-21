@@ -16,17 +16,28 @@ import {
     useNavigation,
     useRoute,
 } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
+
+// =========================================================
+// API
+// =========================================================
 
 const API_URL =
     "https://saaathgrow.onrender.com";
 
 
+// =========================================================
+// SCREEN
+// =========================================================
+
 export default function EmailOTPScreen() {
 
-    const navigation = useNavigation<any>();
+    const navigation =
+        useNavigation<any>();
 
-    const route = useRoute<any>();
+    const route =
+        useRoute<any>();
 
 
     // =====================================================
@@ -60,7 +71,11 @@ export default function EmailOTPScreen() {
         useState("");
 
     const [messageType, setMessageType] =
-        useState<"success" | "error" | "">("");
+        useState<
+            "success" |
+            "error" |
+            ""
+        >("");
 
 
     // =====================================================
@@ -77,11 +92,11 @@ export default function EmailOTPScreen() {
             setInterval(() => {
 
                 setCountdown(
-                    previous => previous - 1
+                    previous =>
+                        previous - 1
                 );
 
             }, 1000);
-
 
         return () => {
             clearInterval(timer);
@@ -100,6 +115,7 @@ export default function EmailOTPScreen() {
     ) => {
 
         setMessage(text);
+
         setMessageType(type);
 
     };
@@ -155,12 +171,25 @@ export default function EmailOTPScreen() {
 
 
             console.log(
-                "VERIFY OTP REQUEST:",
-                {
-                    email,
-                    otp: cleanOTP,
-                    purpose,
-                }
+                "===================================="
+            );
+
+            console.log(
+                "VERIFY OTP REQUEST"
+            );
+
+            console.log(
+                "EMAIL:",
+                email
+            );
+
+            console.log(
+                "PURPOSE:",
+                purpose
+            );
+
+            console.log(
+                "===================================="
             );
 
 
@@ -168,7 +197,9 @@ export default function EmailOTPScreen() {
             // REGISTRATION OTP
             // =================================================
 
-            if (purpose === "registration") {
+            if (
+                purpose === "registration"
+            ) {
 
                 const response =
                     await axios.post(
@@ -224,7 +255,7 @@ export default function EmailOTPScreen() {
                 // -------------------------------------------------
 
                 showMessage(
-                    "Your email has been successfully registered. Please login to continue.",
+                    "Email verified successfully. Please login to continue.",
                     "success"
                 );
 
@@ -233,16 +264,9 @@ export default function EmailOTPScreen() {
                     "EMAIL REGISTRATION SUCCESS"
                 );
 
-                console.log(
-                    "USER MUST LOGIN BEFORE CREATING PROFILE"
-                );
-
 
                 // -------------------------------------------------
                 // MOVE TO LOGIN
-                //
-                // We wait 1.5 seconds so the user can
-                // see the success message.
                 // -------------------------------------------------
 
                 setTimeout(() => {
@@ -262,7 +286,9 @@ export default function EmailOTPScreen() {
             // LOGIN OTP
             // =================================================
 
-            if (purpose === "login") {
+            if (
+                purpose === "login"
+            ) {
 
                 const response =
                     await axios.post(
@@ -313,30 +339,71 @@ export default function EmailOTPScreen() {
                 }
 
 
+                // -------------------------------------------------
+                // USER DATA
+                // -------------------------------------------------
+
+                const user =
+                    data.user;
+
+
+                if (!user) {
+
+                    showMessage(
+                        "Login successful, but user information was not received.",
+                        "error"
+                    );
+
+                    return;
+                }
+
+
                 console.log(
-                    "LOGIN SUCCESS:",
-                    data.user
+                    "===================================="
+                );
+
+                console.log(
+                    "LOGIN SUCCESS"
+                );
+
+                console.log(
+                    "USER:",
+                    user
+                );
+
+                console.log(
+                    "USER STATUS:",
+                    data.status ||
+                    user.status
+                );
+
+                console.log(
+                    "IS APPROVED:",
+                    user.is_approved
+                );
+
+                console.log(
+                    "===================================="
                 );
 
 
                 // =================================================
-                // CHECK PROFILE STATUS
+                // GET USER STATUS
                 // =================================================
 
                 const userStatus =
                     data.status ||
-                    data.user?.status;
+                    user.status ||
+                    "";
 
 
-                console.log(
-                    "USER STATUS:",
-                    userStatus
-                );
+                const isApproved =
+                    user.is_approved === true;
 
 
-                // -------------------------------------------------
-                // PROFILE NOT COMPLETED
-                // -------------------------------------------------
+                // =================================================
+                // 1. PROFILE NOT COMPLETED
+                // =================================================
 
                 if (
                     userStatus ===
@@ -350,37 +417,36 @@ export default function EmailOTPScreen() {
 
 
                     console.log(
-                        "PROFILE NOT COMPLETED"
-                    );
-
-                    console.log(
-                        "MOVING TO CREATE PROFILE"
+                        "USER NEEDS PROFILE"
                     );
 
 
                     setTimeout(() => {
 
                         navigation.replace(
+
                             "CreateProfile",
+
                             {
                                 userId:
-                                    data.user?.id,
+                                    user.id,
 
                                 email:
-                                    data.user?.email ||
+                                    user.email ||
                                     email,
 
                                 fullName:
-                                    data.user?.full_name ||
+                                    user.full_name ||
                                     "",
 
                                 phoneNumber:
-                                    data.user?.phone_number ||
+                                    user.phone_number ||
                                     "",
 
                                 user:
-                                    data.user,
+                                    user,
                             }
+
                         );
 
                     }, 1000);
@@ -391,42 +457,164 @@ export default function EmailOTPScreen() {
 
 
                 // =================================================
-                // PROFILE COMPLETED
+                // 2. DOCUMENTS SUBMITTED
+                //    WAITING FOR ADMIN VERIFICATION
                 // =================================================
 
+                if (
+                    userStatus ===
+                    "pending_verification"
+                ) {
+
+                    showMessage(
+                        "Your documents are under verification. Please wait for admin approval.",
+                        "success"
+                    );
+
+
+                    console.log(
+                        "DOCUMENTS SUBMITTED"
+                    );
+
+                    console.log(
+                        "WAITING FOR ADMIN APPROVAL"
+                    );
+
+
+                    setTimeout(() => {
+
+                        navigation.replace(
+
+                            "VerificationPending",
+
+                            {
+                                user:
+                                    user,
+
+                                userId:
+                                    user.id,
+
+                                email:
+                                    user.email ||
+                                    email,
+                            }
+
+                        );
+
+                    }, 1200);
+
+
+                    return;
+                }
+
+
+                // =================================================
+                // 3. APPROVED DRIVER
+                // =================================================
+
+                if (
+                    userStatus ===
+                    "approved" ||
+                    isApproved
+                ) {
+
+                    showMessage(
+                        "Login successful. Redirecting to your dashboard...",
+                        "success"
+                    );
+
+
+                    console.log(
+                        "DRIVER APPROVED"
+                    );
+
+                    console.log(
+                        "MOVING TO DRIVER APP"
+                    );
+
+
+                    setTimeout(async () => {
+
+                        try {
+
+                            await AsyncStorage.setItem(
+                                "authUser",
+                                JSON.stringify(data.user)
+                            );
+
+                            await AsyncStorage.setItem(
+                                "isLoggedIn",
+                                "true"
+                            );
+
+                            navigation.replace(
+                                "DriverApp",
+                                {
+                                    user: data.user,
+                                }
+                            );
+
+                        } catch (error) {
+
+                            console.log(
+                                "SAVE LOGIN SESSION ERROR:",
+                                error
+                            );
+
+                            navigation.replace(
+                                "DriverApp",
+                                {
+                                    user: data.user,
+                                }
+                            );
+                        }
+
+                    }, 1000);
+
+                    return;
+                }
+
+
+                // =================================================
+                // 4. FALLBACK
+                // =================================================
+
+                console.log(
+                    "UNKNOWN USER STATUS:",
+                    userStatus
+                );
+
+
                 showMessage(
-                    "Login successful. Redirecting to dashboard...",
+
+                    "Your account is waiting for verification. Please wait for admin approval.",
+
                     "success"
-                );
 
-
-                console.log(
-                    "PROFILE COMPLETED"
-                );
-
-                console.log(
-                    "MOVING TO DASHBOARD"
                 );
 
 
                 setTimeout(() => {
 
                     navigation.replace(
-                        "Dashboard",
+
+                        "VerificationPending",
+
                         {
                             user:
-                                data.user,
+                                user,
 
                             userId:
-                                data.user?.id,
+                                user.id,
 
                             email:
-                                data.user?.email ||
+                                user.email ||
                                 email,
                         }
+
                     );
 
-                }, 1000);
+                }, 1200);
 
 
                 return;
@@ -446,9 +634,20 @@ export default function EmailOTPScreen() {
         } catch (error: any) {
 
             console.log(
-                "VERIFY OTP ERROR:",
+                "===================================="
+            );
+
+            console.log(
+                "VERIFY OTP ERROR"
+            );
+
+            console.log(
                 error.response?.data ||
                 error.message
+            );
+
+            console.log(
+                "===================================="
             );
 
 
@@ -457,11 +656,13 @@ export default function EmailOTPScreen() {
 
 
             showMessage(
+
                 serverMessage ||
                 "Unable to verify OTP. Please try again.",
-                "error"
-            );
 
+                "error"
+
+            );
 
         } finally {
 
@@ -478,12 +679,17 @@ export default function EmailOTPScreen() {
 
     const handleResendOTP = async () => {
 
-        if (countdown > 0) {
+        if (
+            countdown > 0 ||
+            resendLoading ||
+            loading
+        ) {
             return;
         }
 
 
         setMessage("");
+
         setMessageType("");
 
 
@@ -505,7 +711,9 @@ export default function EmailOTPScreen() {
             // REGISTRATION RESEND
             // =================================================
 
-            if (purpose === "registration") {
+            if (
+                purpose === "registration"
+            ) {
 
                 const response =
                     await axios.post(
@@ -570,7 +778,9 @@ export default function EmailOTPScreen() {
             // LOGIN RESEND
             // =================================================
 
-            if (purpose === "login") {
+            if (
+                purpose === "login"
+            ) {
 
                 const response =
                     await axios.post(
@@ -647,9 +857,13 @@ export default function EmailOTPScreen() {
 
 
             showMessage(
+
                 error.response?.data?.message ||
+
                 "Unable to resend OTP. Please try again.",
+
                 "error"
+
             );
 
 
@@ -692,7 +906,7 @@ export default function EmailOTPScreen() {
 
 
             {/* =================================================
-                ICON
+                                ICON
             ================================================= */}
 
             <View style={styles.iconContainer}>
@@ -709,7 +923,7 @@ export default function EmailOTPScreen() {
 
 
             {/* =================================================
-                TITLE
+                                TITLE
             ================================================= */}
 
             <Text style={styles.title}>
@@ -723,7 +937,7 @@ export default function EmailOTPScreen() {
 
 
             {/* =================================================
-                EMAIL
+                                EMAIL
             ================================================= */}
 
             <Text style={styles.email}>
@@ -732,7 +946,7 @@ export default function EmailOTPScreen() {
 
 
             {/* =================================================
-                OTP INPUT
+                                OTP INPUT
             ================================================= */}
 
             <TextInput
@@ -749,13 +963,11 @@ export default function EmailOTPScreen() {
                             ""
                         );
 
+
                     setOtp(
                         numbersOnly.slice(0, 6)
                     );
 
-
-                    // Clear error when user
-                    // starts typing again
 
                     if (
                         messageType ===
@@ -788,7 +1000,7 @@ export default function EmailOTPScreen() {
 
 
             {/* =================================================
-                VERIFY BUTTON
+                            VERIFY BUTTON
             ================================================= */}
 
             <TouchableOpacity
@@ -824,7 +1036,7 @@ export default function EmailOTPScreen() {
 
 
             {/* =================================================
-                MESSAGE
+                                MESSAGE
             ================================================= */}
 
             {message ? (
@@ -857,7 +1069,7 @@ export default function EmailOTPScreen() {
 
 
             {/* =================================================
-                RESEND OTP
+                            RESEND OTP
             ================================================= */}
 
             <TouchableOpacity
@@ -893,8 +1105,11 @@ export default function EmailOTPScreen() {
                     >
 
                         {countdown > 0
+
                             ? `Resend OTP in ${countdown}s`
+
                             : "Resend OTP"
+
                         }
 
                     </Text>
@@ -905,7 +1120,7 @@ export default function EmailOTPScreen() {
 
 
             {/* =================================================
-                CHANGE EMAIL
+                            CHANGE EMAIL
             ================================================= */}
 
             <TouchableOpacity
@@ -935,299 +1150,300 @@ export default function EmailOTPScreen() {
 // STYLES
 // =========================================================
 
-const styles = StyleSheet.create({
+const styles =
+    StyleSheet.create({
 
-    container: {
+        container: {
 
-        flex: 1,
+            flex: 1,
 
-        backgroundColor: "#FFFDFF",
+            backgroundColor: "#FFFDFF",
 
-        justifyContent: "center",
+            justifyContent: "center",
 
-        paddingHorizontal: 25,
+            paddingHorizontal: 25,
 
-    },
+        },
 
 
-    // -------------------------------------------------------
-    // ICON
-    // -------------------------------------------------------
+        // =================================================
+        // ICON
+        // =================================================
 
-    iconContainer: {
+        iconContainer: {
 
-        alignItems: "center",
+            alignItems: "center",
 
-        marginBottom: 20,
+            marginBottom: 20,
 
-    },
+        },
 
 
-    iconCircle: {
+        iconCircle: {
 
-        width: 75,
+            width: 75,
 
-        height: 75,
+            height: 75,
 
-        borderRadius: 40,
+            borderRadius: 40,
 
-        backgroundColor: "#E8F8EF",
+            backgroundColor: "#E8F8EF",
 
-        borderWidth: 2,
+            borderWidth: 2,
 
-        borderColor: "#1DAB52",
+            borderColor: "#1DAB52",
 
-        justifyContent: "center",
+            justifyContent: "center",
 
-        alignItems: "center",
+            alignItems: "center",
 
-    },
+        },
 
 
-    icon: {
+        icon: {
 
-        fontSize: 34,
+            fontSize: 34,
 
-    },
+        },
 
 
-    // -------------------------------------------------------
-    // TITLE
-    // -------------------------------------------------------
+        // =================================================
+        // TITLE
+        // =================================================
 
-    title: {
+        title: {
 
-        fontSize: 27,
+            fontSize: 27,
 
-        fontWeight: "800",
+            fontWeight: "800",
 
-        color: "#1DAB52",
+            color: "#1DAB52",
 
-        textAlign: "center",
+            textAlign: "center",
 
-        marginBottom: 10,
+            marginBottom: 10,
 
-    },
+        },
 
 
-    subtitle: {
+        subtitle: {
 
-        fontSize: 14,
+            fontSize: 14,
 
-        color: "#777",
+            color: "#777",
 
-        textAlign: "center",
+            textAlign: "center",
 
-    },
+        },
 
 
-    email: {
+        email: {
 
-        fontSize: 14,
+            fontSize: 14,
 
-        fontWeight: "700",
+            fontWeight: "700",
 
-        color: "#EDB131",
+            color: "#EDB131",
 
-        textAlign: "center",
+            textAlign: "center",
 
-        marginTop: 8,
+            marginTop: 8,
 
-        marginBottom: 25,
+            marginBottom: 25,
 
-    },
+        },
 
 
-    // -------------------------------------------------------
-    // OTP INPUT
-    // -------------------------------------------------------
+        // =================================================
+        // OTP INPUT
+        // =================================================
 
-    otpInput: {
+        otpInput: {
 
-        height: 58,
+            height: 58,
 
-        backgroundColor: "#FFFFFF",
+            backgroundColor: "#FFFFFF",
 
-        borderWidth: 1.5,
+            borderWidth: 1.5,
 
-        borderColor: "#78C4D8",
+            borderColor: "#78C4D8",
 
-        borderRadius: 14,
+            borderRadius: 14,
 
-        paddingHorizontal: 16,
+            paddingHorizontal: 16,
 
-        fontSize: 22,
+            fontSize: 22,
 
-        letterSpacing: 8,
+            letterSpacing: 8,
 
-        color: "#222",
+            color: "#222",
 
-        marginBottom: 18,
+            marginBottom: 18,
 
-    },
+        },
 
 
-    // -------------------------------------------------------
-    // VERIFY BUTTON
-    // -------------------------------------------------------
+        // =================================================
+        // VERIFY BUTTON
+        // =================================================
 
-    button: {
+        button: {
 
-        height: 58,
+            height: 58,
 
-        backgroundColor: "#1DAB52",
+            backgroundColor: "#1DAB52",
 
-        borderRadius: 14,
+            borderRadius: 14,
 
-        justifyContent: "center",
+            justifyContent: "center",
 
-        alignItems: "center",
+            alignItems: "center",
 
-        elevation: 3,
+            elevation: 3,
 
-    },
+        },
 
 
-    buttonDisabled: {
+        buttonDisabled: {
 
-        opacity: 0.7,
+            opacity: 0.7,
 
-    },
+        },
 
 
-    buttonText: {
+        buttonText: {
 
-        color: "#FFFFFF",
+            color: "#FFFFFF",
 
-        fontSize: 17,
+            fontSize: 17,
 
-        fontWeight: "700",
+            fontWeight: "700",
 
-    },
+        },
 
 
-    // -------------------------------------------------------
-    // MESSAGE
-    // -------------------------------------------------------
+        // =================================================
+        // MESSAGE
+        // =================================================
 
-    messageContainer: {
+        messageContainer: {
 
-        marginTop: 12,
+            marginTop: 12,
 
-        paddingHorizontal: 14,
+            paddingHorizontal: 14,
 
-        paddingVertical: 10,
+            paddingVertical: 10,
 
-        borderRadius: 10,
+            borderRadius: 10,
 
-    },
+        },
 
 
-    errorMessageContainer: {
+        errorMessageContainer: {
 
-        backgroundColor: "#FDECEC",
+            backgroundColor: "#FDECEC",
 
-        borderWidth: 1,
+            borderWidth: 1,
 
-        borderColor: "#F5B5B5",
+            borderColor: "#F5B5B5",
 
-    },
+        },
 
 
-    successMessageContainer: {
+        successMessageContainer: {
 
-        backgroundColor: "#E8F8EF",
+            backgroundColor: "#E8F8EF",
 
-        borderWidth: 1,
+            borderWidth: 1,
 
-        borderColor: "#9DDBB5",
+            borderColor: "#9DDBB5",
 
-    },
+        },
 
 
-    messageText: {
+        messageText: {
 
-        fontSize: 14,
+            fontSize: 14,
 
-        textAlign: "center",
+            textAlign: "center",
 
-        fontWeight: "600",
+            fontWeight: "600",
 
-        lineHeight: 20,
+            lineHeight: 20,
 
-    },
+        },
 
 
-    errorMessageText: {
+        errorMessageText: {
 
-        color: "#D32F2F",
+            color: "#D32F2F",
 
-    },
+        },
 
 
-    successMessageText: {
+        successMessageText: {
 
-        color: "#1DAB52",
+            color: "#1DAB52",
 
-    },
+        },
 
 
-    // -------------------------------------------------------
-    // RESEND
-    // -------------------------------------------------------
+        // =================================================
+        // RESEND
+        // =================================================
 
-    resendButton: {
+        resendButton: {
 
-        alignItems: "center",
+            alignItems: "center",
 
-        marginTop: 20,
+            marginTop: 20,
 
-        minHeight: 25,
+            minHeight: 25,
 
-    },
+        },
 
 
-    resendText: {
+        resendText: {
 
-        color: "#1DAB52",
+            color: "#1DAB52",
 
-        fontSize: 14,
+            fontSize: 14,
 
-        fontWeight: "700",
+            fontWeight: "700",
 
-    },
+        },
 
 
-    resendDisabled: {
+        resendDisabled: {
 
-        color: "#999",
+            color: "#999",
 
-        fontWeight: "400",
+            fontWeight: "400",
 
-    },
+        },
 
 
-    // -------------------------------------------------------
-    // CHANGE EMAIL
-    // -------------------------------------------------------
+        // =================================================
+        // CHANGE EMAIL
+        // =================================================
 
-    changeEmailButton: {
+        changeEmailButton: {
 
-        alignItems: "center",
+            alignItems: "center",
 
-        marginTop: 15,
+            marginTop: 15,
 
-    },
+        },
 
 
-    changeEmailText: {
+        changeEmailText: {
 
-        color: "#1DAB52",
+            color: "#1DAB52",
 
-        fontSize: 14,
+            fontSize: 14,
 
-        fontWeight: "600",
+            fontWeight: "600",
 
-    },
+        },
 
-});
+    });
