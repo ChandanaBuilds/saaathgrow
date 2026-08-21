@@ -1,18 +1,28 @@
 import secrets
+import os
+import shutil
+
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import (
+    APIRouter,
+    Depends,
+    UploadFile,
+    File,
+    Form
+)
+
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_db
 
 from app.models.user import User
 from app.models.email_otp import EmailOTP
+from app.models.document import Document
 
 from app.schemas.register_schema import RegisterRequest
 
 from app.services.email_service import send_otp_email
-
 
 router = APIRouter(
     prefix="/auth",
@@ -1145,4 +1155,196 @@ def old_phone_otp_endpoint():
             "Phone OTP login is no longer supported. "
             "Please use email login."
         )
+    }
+# =========================================================
+# DOCUMENT UPLOAD
+# =========================================================
+
+@router.post("/upload-documents")
+def upload_documents(
+    user_id: int = Form(...),
+
+    profile_photo: UploadFile = File(None),
+
+    aadhaar_front: UploadFile = File(None),
+    aadhaar_back: UploadFile = File(None),
+
+    pan_card: UploadFile = File(None),
+
+    driving_license_front: UploadFile = File(None),
+    driving_license_back: UploadFile = File(None),
+
+    vehicle_rc: UploadFile = File(None),
+
+    insurance: UploadFile = File(None),
+
+    db: Session = Depends(get_db)
+):
+
+    # -----------------------------------------------------
+    # CHECK USER
+    # -----------------------------------------------------
+
+    user = (
+        db.query(User)
+        .filter(User.id == user_id)
+        .first()
+    )
+
+    if not user:
+
+        return {
+            "success": False,
+            "message": "User account not found."
+        }
+
+
+    # -----------------------------------------------------
+    # CREATE UPLOAD DIRECTORY
+    # -----------------------------------------------------
+
+    upload_directory = "uploads"
+
+    os.makedirs(
+        upload_directory,
+        exist_ok=True
+    )
+
+
+    # -----------------------------------------------------
+    # CREATE DOCUMENT RECORD
+    # -----------------------------------------------------
+
+    document = Document(
+        user_id=user_id
+    )
+
+
+    # -----------------------------------------------------
+    # FILES
+    # -----------------------------------------------------
+
+    files = {
+
+        "profile_photo":
+            profile_photo,
+
+        "aadhaar_front":
+            aadhaar_front,
+
+        "aadhaar_back":
+            aadhaar_back,
+
+        "pan_card":
+            pan_card,
+
+        "driving_license_front":
+            driving_license_front,
+
+        "driving_license_back":
+            driving_license_back,
+
+        "vehicle_rc":
+            vehicle_rc,
+
+        "insurance":
+            insurance,
+    }
+
+
+    # -----------------------------------------------------
+    # SAVE FILES
+    # -----------------------------------------------------
+
+    for field_name, file in files.items():
+
+        if file is None:
+            continue
+
+
+        # Remove unsafe filename characters
+        filename = os.path.basename(
+            file.filename
+        )
+
+
+        # Create unique filename
+        file_path = os.path.join(
+            upload_directory,
+            f"{user_id}_{field_name}_{filename}"
+        )
+
+
+        try:
+
+            with open(
+                file_path,
+                "wb"
+            ) as buffer:
+
+                shutil.copyfileobj(
+                    file.file,
+                    buffer
+                )
+
+
+            # Save path in database
+            setattr(
+                document,
+                field_name,
+                file_path
+            )
+
+
+        except Exception as error:
+
+            print(
+                "FILE SAVE ERROR:",
+                error
+            )
+
+            return {
+
+                "success": False,
+
+                "message":
+                    f"Unable to save {field_name}."
+            }
+
+
+    # -----------------------------------------------------
+    # SAVE DOCUMENT RECORD
+    # -----------------------------------------------------
+
+    db.add(document)
+
+
+    # -----------------------------------------------------
+    # UPDATE USER STATUS
+    # -----------------------------------------------------
+
+    user.status = "pending_verification"
+
+
+    db.commit()
+
+    db.refresh(document)
+
+
+    # -----------------------------------------------------
+    # SUCCESS
+    # -----------------------------------------------------
+
+    return {
+
+        "success": True,
+
+        "message":
+            "Documents uploaded successfully.",
+
+        "user_id":
+            user_id,
+
+        "status":
+            user.status
     }
