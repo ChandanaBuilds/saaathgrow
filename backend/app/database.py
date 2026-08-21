@@ -5,7 +5,8 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 
-DATABASE_URL = os.getenv("postgresql://saath_groww_db_user:KyXKoTmkTc5mVlbXp1MlwLPQjUx4O4EE@dpg-da3u3s2jobas739pdli0-a/saath_groww_db")
+# Get PostgreSQL URL from Render Environment Variables
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 if not DATABASE_URL:
